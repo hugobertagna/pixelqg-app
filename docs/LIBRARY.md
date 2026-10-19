@@ -19,7 +19,7 @@ Extends docs/CONTRACT.md and docs/TERMINAL.md (read both). Zero npm runtime depe
 - A plugin = `<dir>/.claude-plugin/plugin.json` (`{ "name", "description", "version" }`) + `skills/<skill>/SKILL.md`
   + `agents/<agent>.md` + `commands/<cmd>.md`. `claude plugin validate <dir> --json` validates it offline
   (`{ success, manifest: { errors: [], warnings: [] }, … }`).
-- Loaded names are namespaced by the plugin name: agent `demo-repo:relecteur-fr`, skill/slash command `demo-repo:resume-fichier`.
+- Loaded names are namespaced by the plugin name: agent `exemple-repo:relecteur-fr`, skill/slash command `exemple-repo:resume-fichier`.
 - `--agent <name>` runs the session as that agent (use the namespaced name).
 
 ## 2. Storage (server/library.js) — data dir `HQ_HOME = process.env.PIXELQG_HOME || path.join(os.homedir(), ".pixelqg")`

@@ -30,9 +30,9 @@ test('shim: session id planning', () => {
   assert.deepEqual(fresh.args, ['--model', 'haiku', 'Salut', '--session-id', fresh.sessionId]);
   assert.equal(fresh.name, null);
 
-  assert.deepEqual(planSession(['--session-id', UUID]), { sessionId: UUID, args: ['--session-id', UUID], name: null });
+  assert.deepEqual(planSession(['--session-id', UUID]), { sessionId: UUID, args: ['--session-id', UUID], name: null, profile: null });
   assert.equal(planSession([`--session-id=${UUID}`]).sessionId, UUID);
-  assert.deepEqual(planSession(['-r', UUID]), { sessionId: UUID, args: ['-r', UUID], name: null });
+  assert.deepEqual(planSession(['-r', UUID]), { sessionId: UUID, args: ['-r', UUID], name: null, profile: null });
   assert.equal(planSession([`--resume=${UUID}`]).sessionId, UUID);
 
   for (const args of [['-c'], ['--continue', 'suite'], ['--resume'], ['-r', '--model', 'opus'], ['--resume', 'mot clé']]) {

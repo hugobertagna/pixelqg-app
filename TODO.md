@@ -14,7 +14,7 @@ Liste notée le 19 octobre 2026. Ordre de la liste = ordre donné, pas une prior
 ## Appli
 - [ ] **Compatible Mac, Linux et Android.**
   Note : le serveur et le jeu marchent déjà hors Windows. Le terminal intégré utilise le pseudo-terminal Windows et devra avoir un équivalent Mac/Linux. Le lanceur `PixelQG.exe` aussi. Android rejoint l'idée « gérer depuis le téléphone » plus bas.
-- [ ] **Enlever le mode démo.**
+- [x] **Enlever le mode démo.** Fait le 19 octobre.
 - [ ] **Bouton « Mes skills » :** lister tous les skills installés dans ton Claude Code (et les plugins), en montrant ceux qui appellent des agents.
 - [ ] **Remplacer les petits Claude par les robots PixelQG de la vidéo**, dans l'appli (personnages, avatars, icône).
   Note : ça règle aussi le souci de marque pour la vente.

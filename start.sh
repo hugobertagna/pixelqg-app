@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # PixelQG launcher for macOS / Linux.
-# First time: chmod +x start.sh   then: ./start.sh   (extra options are passed through, e.g. ./start.sh --demo)
+# First time: chmod +x start.sh   then: ./start.sh   (extra options are passed through, e.g. ./start.sh --no-observe)
 
 cd "$(dirname "$0")" || exit 1
 

@@ -85,9 +85,6 @@
             <span class="tb-ico" data-icon="trophy"></span><span class="tb-badge tb-badge--ach num" id="tb-ach-count" hidden></span>
           </button>
           <span class="tb-sep" aria-hidden="true"></span>
-          <button type="button" class="tb tb-toggle" id="btn-demo" aria-pressed="false" aria-label="Mode démo" data-tip="Mode démo : agents simulés, aucun token dépensé">
-            <span class="tb-ico" data-icon="gamepad"></span><span class="tb-led" aria-hidden="true"></span>
-          </button>
           <button type="button" class="tb tb-toggle" id="btn-observe" aria-pressed="false" aria-label="Sessions externes" data-tip="Sessions externes : affiche aussi Claude Code lancé ailleurs">
             <span class="tb-ico" data-icon="eye"></span><span class="tb-led" aria-hidden="true"></span>
           </button>
@@ -112,11 +109,10 @@
         <canvas class="empty-avatar" id="empty-avatar" aria-hidden="true"></canvas>
         <div class="stage-empty-text">
           <p class="stage-empty-title">Le bureau attend son équipe</p>
-          <p class="stage-empty-sub">Confie une mission à un agent, ouvre un terminal et tape <kbd>claude</kbd>, ou découvre le jeu sans dépenser de tokens.</p>
+          <p class="stage-empty-sub">Lance un premier agent depuis « Nouvel agent », ou tape <kbd>claude</kbd> dans la fenêtre « Terminal ».</p>
           <div class="stage-empty-actions">
             <button type="button" class="btn btn-primary btn-sm" id="stage-write">Nouvel agent</button>
             <button type="button" class="btn btn-sm" id="stage-term"><span class="term-glyph" aria-hidden="true">&gt;_</span><span>Terminal</span></button>
-            <button type="button" class="btn btn-sm" id="stage-demo">Mode démo</button>
           </div>
         </div>
       </div>

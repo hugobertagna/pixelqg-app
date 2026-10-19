@@ -69,9 +69,9 @@ test('link: validation, agent fields, child pid update, 404s', (t) => {
   assert.equal(agent.costUsd, null);
 
   // Every agent carries the new fields.
-  const demo = m.createRoot({ source: 'demo', cwd: CWD });
-  assert.equal(demo.terminalId, null);
-  assert.equal(demo.interactive, false);
+  const observed = m.createRoot({ source: 'observed', cwd: CWD });
+  assert.equal(observed.terminalId, null);
+  assert.equal(observed.interactive, false);
 
   // A second session in the same terminal while the first runs: the name is made unique.
   const second = m.linkTerminal(TERM, { cwd: CWD, pid: 4343, name: 'Nova' }).agent;

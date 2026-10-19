@@ -4,7 +4,7 @@ The user asked: "change l'interface, fais un truc plus complexe sur le jeu". The
 game inside and become a GAME with a management HUD (think cosy pixel management sim / small RTS): the office fills the whole
 window, the information lives in game-style HUD elements and windows, and the simulation is much richer.
 Everything that exists must keep working: launching agents (form), follow-ups, stop/remove, logs, the integrated terminal (xterm),
-the library tab (GitHub skills repos + profiles), demo mode, observed sessions, SSE, tokens/cost/timers.
+the library tab (GitHub skills repos + profiles), observed sessions, SSE, tokens/cost/timers.
 Read docs/CONTRACT.md, docs/TERMINAL.md, docs/LIBRARY.md first, then the current code. French UI (tutoiement). Zero dependencies.
 
 ## HARD RULES
@@ -90,7 +90,7 @@ Layout (game-first):
 - The canvas fills the whole window. HUD elements float over it (pixel panels with 2 px borders, slight translucency, crisp).
 - Top-left "ressources" bar: coin icon + tokens totaux (animated counter that the flying coins hit), coût total, agents actifs / total,
   temps cumulé, connection dot, Claude Code version (or warning).
-- Top-right toolbar (pixel icon buttons with tooltips): Nouvel agent, Terminal, Bibliothèque, Succès, Mode démo, Sessions externes,
+- Top-right toolbar (pixel icon buttons with tooltips): Nouvel agent, Terminal, Bibliothèque, Succès, Sessions externes,
   Visite guidée, Son, Plein écran. Each opens/toggles a game WINDOW.
 - Bottom "équipe" bar (RTS party bar): one portrait per root agent (drawAvatar), name, level badge, status ring color, small token bar,
   current activity pixel icon; subagents as small stacked portraits behind their parent; click = select & follow; scrolls horizontally.

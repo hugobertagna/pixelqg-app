@@ -60,13 +60,12 @@
     done: 'Terminé', error: 'Erreur', stopped: 'Arrêté'
   };
 
-  const SOURCE_LABEL = { demo: 'Démo', observed: 'Externe', terminal: 'Terminal' };
+  const SOURCE_LABEL = { observed: 'Externe', terminal: 'Terminal' };
   const SOURCE_TITLE = {
-    demo: 'Agent simulé : aucun token dépensé',
     observed: 'Session Claude Code lancée en dehors de PixelQG (observation seule)',
     terminal: 'Session Claude Code interactive lancée dans un terminal de PixelQG'
   };
-  const SOURCE_CLASSES = new Set(['demo', 'observed', 'terminal']);
+  const SOURCE_CLASSES = new Set(['observed', 'terminal']);
 
   const LOG_TYPE_LABEL = {
     user: 'Consigne', text: 'Message', thinking: 'Réflexion', tool: 'Outil',
@@ -377,7 +376,6 @@
     agent: ['........', '.######.', '.#.##.#.', '########', '########', '.######.', '.#.##.#.', '........'],
     books: ['........', '#.##.#..', '#.##.##.', '#.##.##.', '#.##..##', '#.##..##', '########', '........'],
     trophy: ['########', '#.####.#', '.######.', '..####..', '...##...', '...##...', '..####..', '.######.'],
-    gamepad: ['........', '.######.', '##.###.#', '#...#.##', '##.#####', '.##..##.', '........', '........'],
     eye: ['........', '..####..', '.#....#.', '#..##..#', '#..##..#', '.#....#.', '..####..', '........'],
     camera: ['........', '..##....', '########', '#..##..#', '#.#..#.#', '#..##..#', '########', '........'],
     sound: ['...#....', '..##..#.', '####...#', '####.#.#', '####.#.#', '####...#', '..##..#.', '...#....'],
@@ -635,7 +633,6 @@
     onStop: () => Promise.resolve(false),
     onMessage: () => Promise.resolve(false),
     onRemove: () => Promise.resolve(false),
-    onToggleDemo: () => Promise.resolve(false),
     onToggleObserve: () => Promise.resolve(false),
     onToggleTour: () => false,
     onToggleSound: () => false,
@@ -757,7 +754,6 @@
       statTokens: byId('stat-tokens'),
       statCost: byId('stat-cost'),
       statTime: byId('stat-time'),
-      btnDemo: byId('btn-demo'),
       btnObserve: byId('btn-observe'),
       tbTour: byId('tb-tour'),
       tbSound: byId('tb-sound'),
@@ -773,7 +769,6 @@
       stageEmpty: byId('stage-empty'),
       stageWrite: byId('stage-write'),
       stageTerm: byId('stage-term'),
-      stageDemo: byId('stage-demo'),
       emptyAvatar: byId('empty-avatar'),
       hudBottom: byId('hud-bottom'),
       minimapPanel: byId('minimap-panel'),
@@ -948,10 +943,6 @@
 
   // ------------------------------------------------------------------ ressources bar + toolbar
 
-  function demoActive() {
-    return agentsList().some((a) => a.source === 'demo');
-  }
-
   function fullscreenOn() {
     return !!(document.fullscreenElement || document.webkitFullscreenElement);
   }
@@ -996,9 +987,6 @@
     for (const btn of els.toolbar.querySelectorAll('[data-win-btn]')) {
       btn.addEventListener('click', () => toggleWindow(btn.getAttribute('data-win-btn')));
     }
-    els.btnDemo.addEventListener('click', () => {
-      runBusy(els.btnDemo, () => cb.onToggleDemo(!demoActive()));
-    });
     els.btnObserve.addEventListener('click', () => {
       const current = !!(config && config.observe);
       runBusy(els.btnObserve, () => cb.onToggleObserve(!current));
@@ -1147,7 +1135,7 @@
     }
     if (!found) {
       setText(els.version, 'Claude Code introuvable');
-      setAttr(els.version, 'title', 'Aucun exécutable « claude » trouvé : seul le mode démo est disponible.');
+      setAttr(els.version, 'title', 'Aucun exécutable « claude » trouvé : installe Claude Code ou indique son chemin dans la variable CLAUDE_BIN.');
       return;
     }
     const raw = str(config.claudeVersion).trim();
@@ -1405,7 +1393,7 @@
   function updateLaunchAvailability() {
     const allowed = launchAllowed();
     if (!allowed) {
-      setText(els.formNote, 'Claude Code est introuvable sur cet ordinateur : impossible de lancer un vrai agent. Le mode démo reste disponible.');
+      setText(els.formNote, 'Claude Code est introuvable sur cet ordinateur : impossible de lancer un agent.');
       setHidden(els.formNote, false);
       setAttr(els.submit, 'aria-disabled', 'true');
     } else {
@@ -1891,7 +1879,6 @@
 
     els.stageWrite.addEventListener('click', focusLauncher);
     els.stageTerm.addEventListener('click', () => openWindow('terminal'));
-    els.stageDemo.addEventListener('click', () => runBusy(els.stageDemo, () => cb.onToggleDemo(true)));
 
     const skip = document.querySelector('.skip-link');
     if (skip) {
@@ -2776,7 +2763,6 @@
     setHidden(els.partyEmpty, count > 0);
     setHidden(els.partyList, count === 0);
     setHidden(els.stageEmpty, count > 0);
-    setAttr(els.btnDemo, 'aria-pressed', all.some((x) => x.source === 'demo') ? 'true' : 'false');
     updateNamePlaceholder();
   }
 
@@ -3096,9 +3082,7 @@
     setHidden(els.dFollowup, !canFollow);
     if (!canFollow) setFollowupError('');
     const name = str(a.name) || a.id;
-    const ph = a.source === 'demo'
-      ? 'Nouvelle mission pour ' + name + ' (simulation)… (Ctrl+Entrée)'
-      : 'Donner une nouvelle consigne à ' + name + '… (Ctrl+Entrée)';
+    const ph = 'Donner une nouvelle consigne à ' + name + '… (Ctrl+Entrée)';
     if (els.dFollowupText.placeholder !== ph) els.dFollowupText.placeholder = ph;
 
     let note = '';
@@ -3111,7 +3095,6 @@
     } else if (isSub && running) note = 'Arrêter un sous-agent arrête aussi son agent parent.';
     else if (isSub && ended) note = 'Sous-agent : pour poursuivre, écris à son agent parent.';
     else if (ended && !a.sessionId) note = 'Aucune session à reprendre : impossible d\'envoyer une suite à cet agent.';
-    else if (canFollow && a.source === 'demo') note = 'Agent simulé : un message relance un nouveau scénario, sans dépenser de tokens.';
     else if (a.status === 'starting') note = 'Démarrage du processus Claude Code…';
     setText(els.dNote, note);
     setHidden(els.dNote, !note);
@@ -3468,7 +3451,7 @@
     node.addEventListener('focusin', () => clearTimeout(node._hqTimer));
     node.addEventListener('focusout', arm);
     els.toasts.appendChild(node);
-    // Game toasts come in bursts (demo level-ups): keep at most 3 of them on screen.
+    // Game toasts come in bursts (level-ups): keep at most 3 of them on screen.
     const live = Array.from(els.toasts.children).filter((n) => !n.classList.contains('is-leaving'));
     const games = live.filter((n) => n.classList.contains('toast--game'));
     for (let i = 0; i < games.length - 3; i++) games[i].remove();

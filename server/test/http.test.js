@@ -16,7 +16,6 @@ test('HTTP guards, static files and REST routes', async (t) => {
     publicDir: makePublicDir(),
     claude: fakeClaude,
     skipVersion: true,
-    demoSpeed: 200,
     watcher: { projectsDir: tmpDir('pixelqg-app-projects-'), autoPoll: false },
   });
   t.after(() => app.close());
@@ -142,7 +141,6 @@ test('HTTP guards, static files and REST routes', async (t) => {
     assert.equal(c.colors.length, 12);
     assert.equal(c.colors[0], '#D97757');
     assert.equal(c.observe, false);
-    assert.equal(c.demo, false);
     assert.equal(typeof c.defaultCwd, 'string');
 
     const logs = await request(port, { path: '/api/agents/a99/logs', headers: auth });
@@ -168,31 +166,36 @@ test('HTTP guards, static files and REST routes', async (t) => {
     assert.equal(off.json.config.observe, false);
   });
 
-  await t.test('demo routes start and remove simulated agents', async () => {
+  await t.test('a live agent (fake CLI) streams tokens and logs, then is removed', async () => {
+    const prev = process.env.HQ_FAKE_CLAUDE;
+    process.env.HQ_FAKE_CLAUDE = '1';
     const sse = sseConnect(port, token);
-    await sse.ready;
-    const bad = await request(port, { method: 'POST', path: '/api/demo', headers: auth, body: { count: 9 } });
-    assert.equal(bad.status, 400);
-    const started = await request(port, { method: 'POST', path: '/api/demo', headers: auth, body: { count: 2 } });
-    assert.equal(started.status, 200);
-    assert.equal(started.json.agents.length, 2);
-    assert.ok(started.json.agents.every((a) => a.source === 'demo' && a.id.startsWith('d') && a.canControl === true));
-    const cfg = await request(port, { path: '/api/config', headers: auth });
-    assert.equal(cfg.json.config.demo, true);
-    await waitFor(() => sse.events.some((e) => e.event === 'tokens'), 10000, 'tokens event from demo');
-    await waitFor(() => sse.events.some((e) => e.event === 'log'), 10000, 'log event from demo');
-    const stop = await request(port, { method: 'POST', path: '/api/demo/stop', headers: auth });
-    assert.equal(stop.status, 200);
-    const list = await request(port, { path: '/api/agents', headers: auth });
-    assert.equal(list.json.agents.filter((a) => a.source === 'demo').length, 0);
-    await waitFor(() => sse.events.filter((e) => e.event === 'remove').length >= 2, 5000, 'remove events');
-    sse.close();
+    try {
+      await sse.ready;
+      const started = await request(port, { method: 'POST', path: '/api/agents', headers: auth, body: { prompt: 'Liste les fichiers', cwd: tmpDir() } });
+      assert.equal(started.status, 201);
+      const id = started.json.agent.id;
+      assert.equal(started.json.agent.source, 'spawned');
+      assert.equal(started.json.agent.canControl, true);
+      await waitFor(() => sse.events.some((e) => e.event === 'tokens' && e.data.id === id), 15000, 'tokens event');
+      await waitFor(() => sse.events.some((e) => e.event === 'log'), 15000, 'log event');
+      await waitFor(() => app.manager.get(id).status === 'done', 15000, 'agent done');
+      const del = await request(port, { method: 'DELETE', path: `/api/agents/${id}`, headers: auth });
+      assert.equal(del.status, 200);
+      await waitFor(() => sse.events.some((e) => e.event === 'remove' && e.data.id === id), 5000, 'remove event');
+      const list = await request(port, { path: '/api/agents', headers: auth });
+      assert.ok(!list.json.agents.some((a) => a.id === id || a.parentId === id));
+    } finally {
+      sse.close();
+      if (prev === undefined) delete process.env.HQ_FAKE_CLAUDE;
+      else process.env.HQ_FAKE_CLAUDE = prev;
+    }
   });
 });
 
 test('CLI argument parsing', () => {
-  assert.deepEqual(parseArgs([]), { port: null, demo: false, observe: true, open: false, help: false });
-  assert.deepEqual(parseArgs(['--demo', '--no-observe', '--open', '--port', '5000']), { port: 5000, demo: true, observe: false, open: true, help: false });
+  assert.deepEqual(parseArgs([]), { port: null, observe: true, open: false, help: false });
+  assert.deepEqual(parseArgs(['--no-observe', '--open', '--port', '5000']), { port: 5000, observe: false, open: true, help: false });
   assert.equal(parseArgs(['--port=4400']).port, 4400);
   assert.throws(() => parseArgs(['--port', 'abc']), /Port invalide/);
   assert.throws(() => parseArgs(['--port', '70000']), /Port invalide/);

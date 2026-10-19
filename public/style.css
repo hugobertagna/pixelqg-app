@@ -369,7 +369,6 @@ select.input option { color: var(--text); background: var(--panel); }
   text-overflow: ellipsis;
   flex: none;
 }
-.chip--src-demo { color: var(--lavender); border-color: rgba(180, 142, 224, .45); }
 .chip--src-observed { color: var(--teal); border-color: rgba(79, 193, 185, .45); }
 .chip--src-terminal { color: var(--ok); border-color: rgba(108, 194, 138, .45); }
 .chip--role { color: var(--accent-2); border-color: rgba(240, 163, 127, .4); }

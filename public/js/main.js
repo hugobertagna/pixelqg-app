@@ -30,7 +30,6 @@
   const REQUEST_TIMEOUT = 20000;
   const BACKOFF_BASE = 1000;
   const BACKOFF_MAX = 30000;
-  const DEMO_COUNT = 4;
   const RUNNING = new Set(['starting', 'working']);
   const BASE_TITLE = 'PixelQG';
 
@@ -345,7 +344,7 @@
     }
   }
 
-  /** Toasts when an agent the user launched finishes (demo / observed agents stay quiet). */
+  /** Toasts when an agent the user launched finishes (observed agents stay quiet). */
   function notifyTransition(prev, next) {
     if (next.kind === 'sub' || prev.status === next.status) return;
     if (next.source === 'terminal') {
@@ -387,7 +386,7 @@
     list.push(entry);
     if (list.length > LOG_CAP) list.splice(0, list.length - LOG_CAP);
     gameCall('log', id, entry);
-    if (!isDemo(id)) trackLog(entry);
+    trackLog(entry);
     if (id === selectedId) ui.appendLog(id, entry);
   }
 
@@ -437,16 +436,10 @@
     let tokens = 0;
     let cost = 0;
     let timeMs = 0;
-    let realActive = 0;
-    let realTokens = 0;
     for (const a of store.values()) {
       total++;
       if (RUNNING.has(a.status)) active++;
       tokens += num(a.tokens && a.tokens.total);
-      if (a.source !== 'demo') {
-        if (RUNNING.has(a.status)) realActive++;
-        realTokens += num(a.tokens && a.tokens.total);
-      }
       if (a.kind !== 'sub') {
         // A root's cost already includes its subagents.
         cost += num(a.costUsd);
@@ -457,16 +450,15 @@
         }
       }
     }
-    return { active, total, tokens, cost, timeMs, realActive, realTokens };
+    return { active, total, tokens, cost, timeMs };
   }
 
   function updateStats(now) {
     statsQueued = false;
     const stats = computeStats(Number.isFinite(now) ? now : Date.now());
     ui.setStats(stats);
-    // Demo agents are pretend work: they never count toward the player's stats and achievements.
-    bumpMax('maxConcurrent', stats.realActive);
-    bumpMax('totalTokens', stats.realTokens);
+    bumpMax('maxConcurrent', stats.active);
+    bumpMax('totalTokens', stats.tokens);
     const title = stats.active > 0 ? '(' + stats.active + ') ' + BASE_TITLE : BASE_TITLE;
     if (document.title !== title) document.title = title;
   }
@@ -494,9 +486,7 @@
         kind: 'warn',
         title: 'Claude Code introuvable.',
         text: 'Impossible de lancer de vrais agents : installe Claude Code (npm install -g @anthropic-ai/claude-code) '
-          + 'ou indique son chemin dans la variable d\'environnement CLAUDE_BIN, puis relance PixelQG. '
-          + 'Le mode démo reste disponible.',
-        actions: [{ label: 'Essayer le mode démo', primary: true, onClick: () => setDemo(true) }]
+          + 'ou indique son chemin dans la variable d\'environnement CLAUDE_BIN, puis relance PixelQG.'
       });
     } else {
       ui.hideBanner('claude');
@@ -567,29 +557,6 @@
         return true;
       }
       ui.toast('Impossible de retirer ' + name + ' : ' + err.message, 'err');
-      return false;
-    }
-  }
-
-  async function setDemo(on) {
-    try {
-      if (on) {
-        const data = await api('POST', '/api/demo', { count: DEMO_COUNT });
-        const list = Array.isArray(data.agents) ? data.agents.filter(validAgent) : [];
-        for (const a of list) upsertLocal(a, { quiet: true });
-        const n = list.length || DEMO_COUNT;
-        ui.toast('Mode démo : ' + n + (n > 1 ? ' agents simulés arrivent' : ' agent simulé arrive')
-          + ' au bureau (aucun token dépensé).', 'ok');
-      } else {
-        await api('POST', '/api/demo/stop', {});
-        for (const a of Array.from(store.values())) {
-          if (a.source === 'demo') removeLocal(a.id);
-        }
-        ui.toast('Mode démo arrêté : les agents simulés quittent le bureau.', 'info');
-      }
-      return true;
-    } catch (err) {
-      ui.toast('Mode démo : ' + err.message, 'err');
       return false;
     }
   }
@@ -782,7 +749,7 @@
   // ------------------------------------------------------------------ progression: player stats + achievements
   // Counters follow docs/GAME2.md §2 (stats object handed to HQProgression.ACHIEVEMENTS[].test). They only grow
   // from LIVE events (SSE agents / logs / tokens, terminals opened from this page); agents that were already in
-  // the office when the page loaded were counted by an earlier page. Demo agents never count (pretend work).
+  // the office when the page loaded were counted by an earlier page.
 
   const STATS_KEY = 'pixelqg-app:stats';
   const ACH_KEY = 'pixelqg-app:achievements';
@@ -876,21 +843,16 @@
     bump('totalTokens', delta);
   }
 
-  function isDemo(id) {
-    const a = typeof id === 'string' ? store.get(id) : null;
-    return !!(a && a.source === 'demo');
-  }
-
   function trackArrival(agent, snapshot) {
     if (seenAgents.has(agent.id)) return;
     seenAgents.add(agent.id);
-    if (snapshot || agent.source === 'demo') return;
+    if (snapshot) return;
     if (agent.kind === 'sub') bump('subagents');
     else if (agent.source !== 'observed') bump('agentsLaunched');
   }
 
   function trackTransition(prev, next) {
-    if (prev.status === next.status || next.source === 'demo') return;
+    if (prev.status === next.status) return;
     if (next.status === 'error') bump('errors');
     else if (next.status === 'done' && RUNNING.has(prev.status)) bump('done');
   }
@@ -1110,7 +1072,7 @@
       const data = parseEvent(ev);
       if (data && typeof data.id === 'string' && num(data.delta) > 0) {
         gameCall('tokens', data.id, num(data.delta));
-        if (!isDemo(data.id)) addTokens(num(data.delta));
+        addTokens(num(data.delta));
       }
     });
     es.addEventListener('terminal', (ev) => {
@@ -1217,7 +1179,6 @@
       onStop: stop,
       onMessage: sendMessage,
       onRemove: removeAgent,
-      onToggleDemo: setDemo,
       onToggleObserve: setObserve,
       getTerminal: (id) => terminals.get(id),
       getTerminals: () => terminals.values(),

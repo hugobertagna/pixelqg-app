@@ -30,14 +30,14 @@ test('colors: palette order, live colors avoided, least used when all taken', ()
 
 test('manager allocates distinct names and colors to live agents only', () => {
   const m = new AgentManager({ claude: null });
-  const a = m.createRoot({ source: 'demo', cwd: '/tmp', status: 'starting' });
-  const b = m.createRoot({ source: 'demo', cwd: '/tmp', status: 'starting' });
+  const a = m.createRoot({ source: 'observed', cwd: '/tmp', status: 'starting' });
+  const b = m.createRoot({ source: 'observed', cwd: '/tmp', status: 'starting' });
   assert.equal(a.name, 'Nova');
   assert.equal(b.name, 'Pixel');
   assert.equal(a.color, '#D97757');
   assert.equal(b.color, '#5BA4E6');
   m.remove(a.id);
-  const c = m.createRoot({ source: 'demo', cwd: '/tmp', status: 'starting' });
+  const c = m.createRoot({ source: 'observed', cwd: '/tmp', status: 'starting' });
   assert.equal(c.name, 'Nova', 'a freed name is reused');
   assert.equal(c.color, '#D97757');
 });

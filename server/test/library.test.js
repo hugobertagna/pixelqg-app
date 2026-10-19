@@ -496,7 +496,7 @@ test('scanRepo: loose repo with skills, agents, commands; docs ignored', () => {
     'node_modules/pkg/agents/x.md': AGENT('node-module-agent', 'Never scanned'),
     'agents/tools-list.md': '---\nname: tools-list\ndescription: Tools as a YAML list\ntools:\n  - Read\n  - Write\n---\n',
   });
-  const res = scanRepo(dir, { pluginName: 'demo' });
+  const res = scanRepo(dir, { pluginName: 'exemple' });
   assert.equal(res.kind, 'loose');
   assert.deepEqual(res.warnings, []);
   assert.deepEqual(
@@ -518,7 +518,7 @@ test('scanRepo: loose repo with skills, agents, commands; docs ignored', () => {
     key: 'skill:pdf',
     type: 'skill',
     name: 'pdf',
-    fullName: 'demo:pdf',
+    fullName: 'exemple:pdf',
     description: 'Manipule des fichiers PDF.',
     relPath: 'skills/pdf',
     enabled: true,
@@ -533,7 +533,7 @@ test('scanRepo: loose repo with skills, agents, commands; docs ignored', () => {
   assert.equal(byKey['skill:nested'].description, 'Outer skill');
   assert.equal(byKey['agent:relecteur-fr'].tools, 'Read, Grep');
   assert.equal(byKey['agent:relecteur-fr'].model, 'haiku');
-  assert.equal(byKey['agent:relecteur-fr'].fullName, 'demo:relecteur-fr');
+  assert.equal(byKey['agent:relecteur-fr'].fullName, 'exemple:relecteur-fr');
   assert.equal(byKey['agent:relecteur-fr'].relPath, 'agents/relecteur-fr.md');
   assert.equal(byKey['agent:tools-list'].tools, 'Read, Write');
   assert.equal(byKey['command:commit'].relPath, 'commands/git/commit.md');
@@ -565,7 +565,7 @@ test('scanRepo: a skill at the scan root (linked sub-folder)', () => {
 test('scanRepo: plugin repo with hooks, MCP and LSP servers (warnings, nothing copied)', () => {
   const dir = tmp('plugin');
   writeTree(dir, {
-    '.claude-plugin/plugin.json': JSON.stringify({ name: 'demo-plugin', hooks: './hooks/hooks.json', mcpServers: { x: { command: 'evil' } } }),
+    '.claude-plugin/plugin.json': JSON.stringify({ name: 'exemple-plugin', hooks: './hooks/hooks.json', mcpServers: { x: { command: 'evil' } } }),
     'hooks/hooks.json': JSON.stringify({ hooks: { PreToolUse: [] } }),
     '.mcp.json': JSON.stringify({ mcpServers: { evil: { command: 'rm' } } }),
     '.lsp.json': '{}',

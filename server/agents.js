@@ -1,12 +1,12 @@
 'use strict';
 
-// AgentManager: owns every agent shown in PixelQG (spawned, demo, observed),
+// AgentManager: owns every agent shown in PixelQG (spawned, observed, terminal),
 // spawns real Claude Code processes and turns their stream-json output into the
 // Agent objects / log entries described in docs/CONTRACT.md (sections 1, 2, 4).
 //
 // A single StreamParser class interprets stream-json events. It is used for real
-// processes, for the demo simulator (which emits synthetic events) and for the
-// watcher (which converts transcript lines into the same event shapes).
+// processes and for the watcher (which converts transcript lines into the same
+// event shapes).
 
 const { EventEmitter } = require('node:events');
 const childProcess = require('node:child_process');
@@ -470,7 +470,7 @@ class StreamParser {
     this.turnBase = zeroTokens();
   }
 
-  /** Called when a new turn starts (process spawn, follow-up, demo scenario). */
+  /** Called when a new turn starts (process spawn, follow-up). */
   beginTurn() {
     this.resultSeen = false;
     const root = this.manager._rec(this.rootId);
@@ -1085,10 +1085,6 @@ class AgentManager extends EventEmitter {
     if (ACTIVE_STATUSES.has(agent.status) || (rec.proc && !exiting) || rec.pendingTurn) {
       throw new HqError(409, "L'agent travaille encore : attends la fin de son tour ou arrête-le.");
     }
-    if (rec.controller && typeof rec.controller.message === 'function') {
-      rec.controller.message(prompt);
-      return rec.agent;
-    }
     if (!agent.sessionId) {
       throw new HqError(409, "Aucune session à reprendre : l'agent n'a pas encore de sessionId.");
     }
@@ -1127,23 +1123,12 @@ class AgentManager extends EventEmitter {
       return rec.agent;
     }
     const running = ACTIVE_STATUSES.has(root.agent.status) || Boolean(root.proc);
-    if (!running) {
-      // A resting demo agent would start a new scenario on its own: freeze it.
-      if (root.agent.source === 'demo' && root.controller && root.agent.status === 'done') {
-        root.controller.stop();
-        const t = Date.now();
-        this._patch(root.agent.id, { status: 'stopped', endedAt: root.agent.endedAt || t });
-        this._setActivity(root.agent.id, 'idle', LABELS.stopped, null, t);
-        this._log(root.agent.id, { t, type: 'system', text: 'Arrêté par l’utilisateur' });
-      }
-      return rec.agent;
-    }
+    if (!running) return rec.agent;
     this._clearPendingTurn(root);
     if (root.proc) {
       root.proc.stopRequested = true;
       root.proc.killPromise = killProcessTree(root.proc.child, this.platform);
     }
-    if (root.controller && typeof root.controller.stop === 'function') root.controller.stop();
     if (ACTIVE_STATUSES.has(root.agent.status)) this._markStopped(root, 'Arrêté par l’utilisateur');
     return rec.agent;
   }
@@ -1171,13 +1156,6 @@ class AgentManager extends EventEmitter {
       if (rec.link.active) this._stopTerminalSession(rec, 'Retiré par l’utilisateur');
       this._clearLink(rec);
     }
-    if (rec.controller && typeof rec.controller.dispose === 'function') {
-      try {
-        rec.controller.dispose();
-      } catch {
-        /* controller cleanup must never block removal */
-      }
-    }
     for (const subId of this._subIdsOf(id)) this._delete(subId);
     this._delete(id);
     return true;
@@ -1192,13 +1170,6 @@ class AgentManager extends EventEmitter {
         rec.proc.stopRequested = true;
         waits.push(rec.proc.killPromise || (rec.proc.killPromise = killProcessTree(rec.proc.child, this.platform)));
         if (ACTIVE_STATUSES.has(rec.agent.status)) this._markStopped(rec, 'Arrêté (fermeture de PixelQG)');
-      }
-      if (rec.controller && typeof rec.controller.dispose === 'function' && rec.agent.source === 'demo') {
-        try {
-          rec.controller.dispose();
-        } catch {
-          /* ignore */
-        }
       }
       // Interactive sessions die with their terminal (the terminal manager kills every PTY tree).
       if (rec.link && rec.link.active) this.endTerminalLink(rec.agent.id, { killed: true, reason: 'Arrêté (fermeture de PixelQG)' });
@@ -1227,22 +1198,16 @@ class AgentManager extends EventEmitter {
     return n;
   }
 
-  // ---------------------------------------------------------------- API for demo.js / watcher.js
+  // ---------------------------------------------------------------- API for watcher.js
 
   /**
-   * Creates a root agent driven by an external source (demo or watcher).
+   * Creates a root agent driven by an external source (watcher).
    * @param {object} spec { source, id?, name?, color?, model?, cwd, prompt, status?, canControl?, sessionId?, startedAt? }
    * @returns {object} the agent
    */
   createRoot(spec) {
     const rec = this._createRoot(spec);
     return rec.agent;
-  }
-
-  /** Attaches a controller { stop(), message(prompt), dispose() } to a root. */
-  attachController(id, controller) {
-    const rec = this.records.get(id);
-    if (rec) rec.controller = controller;
   }
 
   /** Feeds one stream-json event to the root's parser. */
@@ -1252,7 +1217,7 @@ class AgentManager extends EventEmitter {
     rec.parser.handle(event, ctx);
   }
 
-  /** Starts a new turn (status starting, prompt logged) for demo scenarios. */
+  /** Starts a new turn (status starting, prompt logged) on an externally driven root. */
   beginTurn(rootId, prompt) {
     const rec = this.records.get(rootId);
     if (rec) this._beginTurn(rec, prompt);
@@ -1651,8 +1616,8 @@ class AgentManager extends EventEmitter {
     const source = spec.source || 'spawned';
     let id;
     if (spec.id) id = this._uniqueId(spec.id);
-    else id = this._nextId(source === 'demo' ? 'd' : source === 'observed' ? 'o' : 'a');
-    while (this.records.has(id)) id = this._nextId(source === 'demo' ? 'd' : 'a');
+    else id = this._nextId(source === 'observed' ? 'o' : 'a');
+    while (this.records.has(id)) id = this._nextId('a');
     const status = spec.status || 'starting';
     const agent = {
       id,
@@ -1704,7 +1669,6 @@ class AgentManager extends EventEmitter {
       usage: new Map(),
       lastMsgId: null,
       parser: null,
-      controller: null,
       proc: null,
       options: null,
       pendingTurn: null,

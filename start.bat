@@ -1,6 +1,6 @@
 @echo off
 rem PixelQG launcher for Windows: double-click this file.
-rem Extra options are passed through, e.g. start.bat --demo
+rem Extra options are passed through, e.g. start.bat --no-observe
 setlocal
 chcp 65001 >nul
 cd /d "%~dp0"

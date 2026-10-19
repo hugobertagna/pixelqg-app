@@ -6,6 +6,8 @@ Claude Code mascot), tinted in its own color, walking between rooms according to
 All UI text is in **French**. Code comments in English. **Zero npm dependencies** (Node 22 built-ins
 only, vanilla browser JS, no build step). Windows 11 is the primary platform; must also work on macOS/Linux.
 
+> **2026-10-19: demo mode was removed** (no demo.js, `--demo`, `/api/demo*`, `config.demo` or source "demo" any more); the demo mentions below are historical.
+
 Project root: `C:\Users\alex\OneDrive\Bureau\pixelqg-app`
 
 ```

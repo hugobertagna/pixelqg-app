@@ -11,7 +11,6 @@ consommés, le coût, le temps de travail, ses sous-agents et le journal complet
 
 - 100 % local : rien n'est envoyé ailleurs que vers Claude Code lui-même.
 - Aucune dépendance npm : uniquement Node.js.
-- Un **mode démo** permet de tout essayer sans dépenser le moindre jeton.
 
 ---
 
@@ -21,8 +20,6 @@ consommés, le coût, le temps de travail, ses sous-agents et le journal complet
 |---|---|---|
 | [Node.js](https://nodejs.org) | 20 ou plus récent | `node --version` |
 | Claude Code (`npm install -g @anthropic-ai/claude-code`) | installé **et connecté** | `claude --version`, puis `claude` une fois pour te connecter |
-
-Le mode démo fonctionne même sans Claude Code.
 
 ---
 
@@ -40,16 +37,14 @@ travailler sont alors stoppés proprement.
 
 ```bash
 npm start          # lance le serveur, puis ouvre http://127.0.0.1:4317
-npm run demo       # idem, avec 4 agents simulés (aucun jeton dépensé)
 ./start.sh         # macOS / Linux : lance et ouvre le navigateur (chmod +x start.sh la première fois)
 ```
 
-Options disponibles (aussi utilisables avec `start.bat` / `start.sh`, par exemple `start.bat --demo`) :
+Options disponibles (aussi utilisables avec `start.bat` / `start.sh`, par exemple `start.bat --no-observe`) :
 
 | Option | Effet |
 |---|---|
 | `--port N` | port d'écoute (par défaut 4317 ; variable d'environnement `HQ_PORT` possible) |
-| `--demo` | démarre 4 agents simulés |
 | `--no-observe` | n'observe pas les sessions Claude Code lancées ailleurs |
 | `--open` | ouvre le navigateur automatiquement |
 

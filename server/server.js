@@ -3,7 +3,7 @@
 // PixelQG server: static files, token-protected REST API and Server-Sent Events.
 // Binds 127.0.0.1 only. See docs/CONTRACT.md section 3.
 //
-// Usage: node server/server.js [--port N] [--demo] [--no-observe] [--open]
+// Usage: node server/server.js [--port N] [--no-observe] [--open]
 
 const http = require('node:http');
 const fs = require('node:fs');
@@ -15,7 +15,6 @@ const childProcess = require('node:child_process');
 
 const { AgentManager, HqError, MODELS, PERMISSION_MODES } = require('./agents');
 const { resolveClaude, getVersion } = require('./claude-bin');
-const { DemoRunner } = require('./demo');
 const { SessionWatcher } = require('./watcher');
 const { TerminalManager } = require('./terminals');
 const { Library } = require('./library');
@@ -89,14 +88,13 @@ const HTML_CSP = [
 
 /**
  * Parses command-line flags.
- * @returns {{port: number|null, demo: boolean, observe: boolean, open: boolean, help: boolean}}
+ * @returns {{port: number|null, observe: boolean, open: boolean, help: boolean}}
  */
 function parseArgs(argv) {
-  const out = { port: null, demo: false, observe: true, open: false, help: false };
+  const out = { port: null, observe: true, open: false, help: false };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg === '--demo') out.demo = true;
-    else if (arg === '--no-observe') out.observe = false;
+    if (arg === '--no-observe') out.observe = false;
     else if (arg === '--open') out.open = true;
     else if (arg === '--help' || arg === '-h') out.help = true;
     else if (arg === '--port' || arg.startsWith('--port=')) {
@@ -104,7 +102,7 @@ function parseArgs(argv) {
       out.port = parsePort(raw);
       if (out.port === null) throw new Error(`Port invalide : « ${raw === undefined ? '' : raw} » (attendu : un nombre entre 1 et 65535).`);
     } else {
-      throw new Error(`Option inconnue : « ${arg} ». Options : --port N, --demo, --no-observe, --open.`);
+      throw new Error(`Option inconnue : « ${arg} ». Options : --port N, --no-observe, --open.`);
     }
   }
   return out;
@@ -289,12 +287,10 @@ function listenOn(server, port, host) {
  * Starts the HQ server.
  * @param {object} [opts]
  * @param {number} [opts.port=4317] 0 = ephemeral port (tests)
- * @param {boolean} [opts.demo] start 4 demo agents
  * @param {boolean} [opts.observe=true] watch external sessions
  * @param {string} [opts.publicDir]
  * @param {object|null} [opts.claude] pre-resolved binary (skips resolution when provided)
  * @param {object} [opts.watcher] SessionWatcher options
- * @param {number} [opts.demoSpeed]
  * @param {string} [opts.token]
  * @param {boolean} [opts.skipVersion] do not run `claude --version`
  * @param {object} [opts.terminals] TerminalManager options (integrated terminal)
@@ -338,7 +334,6 @@ async function startServer(opts = {}) {
     defaultCwd: os.homedir(),
     library,
   });
-  const demo = new DemoRunner(manager, { speed: opts.demoSpeed || 1 });
   const watcher = new SessionWatcher(manager, opts.watcher || {});
   const terminals = new TerminalManager({ manager, defaultCwd: os.homedir(), library, ...(opts.terminals || {}) });
   const terminalsReady = terminals.init();
@@ -360,7 +355,6 @@ async function startServer(opts = {}) {
       permissionModes: PERMISSION_MODES,
       colors: names.COLORS,
       observe: watcher.enabled,
-      demo: demo.active,
       efforts: EFFORT_OPTIONS,
       names: names.NAMES,
       nextName: manager.nextName(),
@@ -677,28 +671,6 @@ async function startServer(opts = {}) {
       }
       return notAllowed('GET, POST');
     }
-    if (pathname === '/api/demo') {
-      if (method !== 'POST') return notAllowed('POST');
-      const body = await readJsonBody(req);
-      let count = 4;
-      if (body && typeof body === 'object' && body.count !== undefined && body.count !== null) {
-        if (!Number.isInteger(body.count) || body.count < 1 || body.count > 8) {
-          throw new HqError(400, "Nombre d'agents de démonstration invalide (entre 1 et 8).");
-        }
-        count = body.count;
-      }
-      const agents = demo.start(count);
-      if (!agents.length) {
-        throw new HqError(409, `Nombre maximal d'agents de démonstration atteint (${demo.maxAgents}).`);
-      }
-      return sendJson(res, 200, { ok: true, agents });
-    }
-    if (pathname === '/api/demo/stop') {
-      if (method !== 'POST') return notAllowed('POST');
-      await readJsonBody(req);
-      demo.stopAll();
-      return sendJson(res, 200, { ok: true });
-    }
     if (pathname === '/api/observe') {
       if (method !== 'POST') return notAllowed('POST');
       const body = await readJsonBody(req);
@@ -1000,7 +972,6 @@ async function startServer(opts = {}) {
 
   if (!opts.skipVersion && manager.claude) state.claudeVersion = await getVersion(manager.claude);
   if (opts.observe !== false) watcher.start();
-  if (opts.demo) demo.start(4);
   license.startAutoRefresh();
 
   let closing = null;
@@ -1039,7 +1010,6 @@ async function startServer(opts = {}) {
     url: `http://${HOST}:${port}/`,
     token,
     manager,
-    demo,
     watcher,
     terminals,
     library,
@@ -1075,7 +1045,6 @@ function printBanner(app, args) {
   if (lic.devMode) lines.push('  •  Licence : mode développeur (comptes non configurés dans cloud-config.js)');
   else if (lic.licensed) lines.push(`  ✓  Licence : active sur ce PC${lic.offline ? ' (hors ligne)' : ''}`);
   else lines.push('  ⚠  Licence : ouvre l’adresse ci-dessus et connecte-toi à ton compte PixelQG');
-  if (args.demo) lines.push('  •  Mode démo : 4 agents simulés (aucun jeton dépensé)');
   if (app.port !== (args.port || DEFAULT_PORT)) lines.push(`  ℹ  Le port demandé était occupé : utilisation du port ${app.port}.`);
   for (const w of app.warnings) lines.push(`  ⚠  ${w}`);
   lines.push('', '  Appuie sur Ctrl+C pour tout arrêter (les agents en cours seront stoppés).', '');
@@ -1102,7 +1071,6 @@ async function main() {
       '',
       '  node server/server.js [options]',
       '    --port N       port d’écoute (défaut 4317, ou variable HQ_PORT)',
-      '    --demo         lance 4 agents simulés (aucun jeton dépensé)',
       '    --no-observe   n’observe pas les sessions Claude Code lancées ailleurs',
       '    --open         ouvre le navigateur automatiquement',
       '',
@@ -1121,7 +1089,7 @@ async function main() {
 
   let app;
   try {
-    app = await startServer({ port, demo: args.demo, observe: args.observe });
+    app = await startServer({ port, observe: args.observe });
   } catch (err) {
     console.error(`\n  ✖  ${err.message}\n  Astuce : choisis un autre port avec --port N ou la variable HQ_PORT.\n`);
     process.exit(1);
