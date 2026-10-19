@@ -13,3 +13,6 @@ backups/
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# Personal notes and documents
+Doc/
