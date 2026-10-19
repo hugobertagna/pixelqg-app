@@ -6,7 +6,7 @@ Merci de vouloir donner un coup de main ! PixelQG est un projet communautaire : 
 
 Le plus simple, sans écrire de code :
 1. Mets tes skills ou tes agents dans un dépôt GitHub **public**. Un skill est un dossier avec un `SKILL.md`, un agent est un fichier `.md` avec un nom et une description en en-tête.
-2. Ouvre une discussion dans la catégorie **Skills** des [Discussions](https://github.com/hugobertagna/pixelqg-app/discussions), avec le lien du dépôt, ce qu'il apporte et une capture si tu veux.
+2. Ouvre une discussion dans la catégorie **Show and tell** des [Discussions](https://github.com/hugobertagna/pixelqg-app/discussions), avec le lien du dépôt, ce qu'il apporte et une capture si tu veux.
 3. Les autres l'ajoutent depuis l'onglet **Bibliothèque** de PixelQG, en collant le lien.
 
 Vérifie que ton dépôt ne contient ni secret, ni clé d'API, ni donnée personnelle.
