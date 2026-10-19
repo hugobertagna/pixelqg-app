@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Management;
 using System.Net;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -327,16 +328,69 @@ static class Program
             + " --no-first-run --no-default-browser-check --disable-sync";
         psi.UseShellExecute = false;
         Stopwatch sw = Stopwatch.StartNew();
-        Process p = Process.Start(psi);
+        Process.Start(psi);
         if (!wait) return;
-        p.WaitForExit();
-        Log("Fenêtre fermée après " + (sw.ElapsedMilliseconds / 1000) + " s");
-        if (sw.ElapsedMilliseconds < 4000)
+
+        // Edge often hands the window to another of its processes and the one we started exits
+        // at once, so watch the real app window (main browser process of our profile) instead.
+        bool seen = false;
+        while (sw.ElapsedMilliseconds < 30000)
         {
-            // The browser handed the window to an already running instance: we cannot watch it.
-            MessageBox.Show("PixelQG est ouvert.\n\nClique sur OK quand tu veux arrêter PixelQG et ses agents.",
-                Title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            if (AppWindowOpen(profile)) { seen = true; break; }
+            Thread.Sleep(500);
         }
+        if (!seen)
+        {
+            Log("Fenêtre introuvable après 30 s");
+            MessageBox.Show("PixelQG est ouvert dans ton navigateur.\n\nGarde ce message ouvert : clique sur OK seulement quand tu veux arrêter PixelQG et ses agents.",
+                Title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+        int misses = 0;
+        while (misses < 3)
+        {
+            Thread.Sleep(1000);
+            misses = AppWindowOpen(profile) ? 0 : misses + 1;
+        }
+        Log("Fenêtre fermée après " + (sw.ElapsedMilliseconds / 1000) + " s");
+    }
+
+    /// True while a top-level window of the browser running our dedicated profile is open.
+    /// A browser left running in the background (no window) does not count.
+    static bool AppWindowOpen(string profile)
+    {
+        try
+        {
+            using (ManagementObjectSearcher searcher = new ManagementObjectSearcher(
+                "SELECT ProcessId, CommandLine FROM Win32_Process WHERE Name = 'msedge.exe' OR Name = 'chrome.exe'"))
+            using (ManagementObjectCollection results = searcher.Get())
+            {
+                foreach (ManagementObject mo in results)
+                {
+                    using (mo)
+                    {
+                        string cmd = mo["CommandLine"] as string;
+                        if (cmd == null || cmd.IndexOf(profile, StringComparison.OrdinalIgnoreCase) < 0) continue;
+                        if (cmd.IndexOf("--type=", StringComparison.OrdinalIgnoreCase) >= 0) continue;
+                        int pid = Convert.ToInt32(mo["ProcessId"]);
+                        try
+                        {
+                            using (Process p = Process.GetProcessById(pid))
+                            {
+                                if (p.MainWindowHandle != IntPtr.Zero) return true;
+                            }
+                        }
+                        catch { }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log("Surveillance de la fenêtre : " + ex.Message);
+            return true; // never stop the server because of a monitoring error
+        }
+        return false;
     }
 
     static string FindBrowser()
