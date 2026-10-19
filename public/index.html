@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#14151f">
+  <meta name="description" content="PixelQG : lance tes agents Claude Code et regarde-les travailler dans un bureau en pixel art.">
+  <title>PixelQG</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect x='2' y='4' width='12' height='7' fill='%23D97757'/%3E%3Crect x='2' y='4' width='12' height='1' fill='%23F0A37F'/%3E%3Crect x='2' y='10' width='12' height='1' fill='%23B65F42'/%3E%3Crect x='0' y='6' width='2' height='2' fill='%23D97757'/%3E%3Crect x='14' y='6' width='2' height='2' fill='%23B65F42'/%3E%3Crect x='5' y='6' width='1' height='2' fill='%231A1012'/%3E%3Crect x='10' y='6' width='1' height='2' fill='%231A1012'/%3E%3Crect x='3' y='11' width='1' height='2' fill='%23B65F42'/%3E%3Crect x='5' y='11' width='1' height='2' fill='%23B65F42'/%3E%3Crect x='10' y='11' width='1' height='2' fill='%23B65F42'/%3E%3Crect x='12' y='11' width='1' height='2' fill='%23B65F42'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;family=Rubik:wght@400;500;600;700&amp;family=Silkscreen:wght@400;700&amp;display=swap">
+  <link rel="stylesheet" href="vendor/xterm/xterm.css">
+  <link rel="stylesheet" href="style.css">
+  <script>window.HQ_TOKEN="__HQ_TOKEN__";</script>
+</head>
+<body>
+  <a class="skip-link" href="#f-prompt">Aller au formulaire de lancement</a>
+
+  <div class="app" id="app">
+    <!-- The office fills the whole window; the HUD floats above it. -->
+    <canvas id="office" role="img" aria-label="Bureau en pixel art où les agents se déplacent selon leur activité. Molette : zoom, glisser : déplacer, double-clic : recentrer."></canvas>
+
+    <div class="hud" id="hud">
+      <!-- ============================== top row: ressources · toolbar · banners · toasts ============================== -->
+      <div class="hud-top" id="hud-top">
+        <header class="res-bar px-panel" id="res-bar" aria-label="Ressources">
+          <div class="brand" title="PixelQG">
+            <svg class="brand-mark" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true" focusable="false">
+              <rect x="2" y="4" width="12" height="7" fill="#D97757"/>
+              <rect x="2" y="4" width="12" height="1" fill="#F0A37F"/>
+              <rect x="2" y="10" width="12" height="1" fill="#B65F42"/>
+              <rect x="0" y="6" width="2" height="2" fill="#D97757"/>
+              <rect x="14" y="6" width="2" height="2" fill="#B65F42"/>
+              <rect class="brand-eye" x="5" y="6" width="1" height="2" fill="#1A1012"/>
+              <rect class="brand-eye" x="10" y="6" width="1" height="2" fill="#1A1012"/>
+              <rect x="3" y="11" width="1" height="2" fill="#B65F42"/>
+              <rect x="5" y="11" width="1" height="2" fill="#B65F42"/>
+              <rect x="10" y="11" width="1" height="2" fill="#B65F42"/>
+              <rect x="12" y="11" width="1" height="2" fill="#B65F42"/>
+            </svg>
+            <h1 class="wordmark">Claude <span>HQ</span></h1>
+          </div>
+
+          <dl class="res" aria-label="Statistiques globales">
+            <div class="res-item res-item--coins" id="res-coins">
+              <dt class="res-key"><span class="res-ico res-ico--coin" id="coin-target" data-icon="coin"></span><span class="res-label">Tokens</span></dt>
+              <dd class="res-val num" id="stat-tokens">0</dd>
+            </div>
+            <div class="res-item">
+              <dt class="res-key"><span class="res-ico res-ico--cost" data-icon="cost"></span><span class="res-label">Coût</span></dt>
+              <dd class="res-val num" id="stat-cost">$0,0000</dd>
+            </div>
+            <div class="res-item">
+              <dt class="res-key"><span class="res-ico res-ico--agents" data-icon="agent"></span><span class="res-label">Actifs</span></dt>
+              <dd class="res-val num" id="stat-active">0 / 0</dd>
+            </div>
+            <div class="res-item">
+              <dt class="res-key"><span class="res-ico res-ico--time" data-icon="hourglass"></span><span class="res-label">Temps</span></dt>
+              <dd class="res-val num" id="stat-time">00:00</dd>
+            </div>
+          </dl>
+
+          <div class="res-sys">
+            <span class="conn" id="conn" data-state="connecting" role="status">
+              <span class="conn-dot" aria-hidden="true"></span>
+              <span class="conn-label" id="conn-label">Connexion…</span>
+            </span>
+            <span class="version" id="claude-version">Claude Code…</span>
+          </div>
+        </header>
+
+        <nav class="toolbar px-panel" id="toolbar" aria-label="Actions du bureau">
+          <button type="button" class="tb" id="tb-agent" data-win-btn="agent" aria-pressed="false" aria-controls="win-agent" aria-label="Nouvel agent" data-tip="Nouvel agent">
+            <span class="tb-ico" data-icon="agent"></span><span class="tb-plus" aria-hidden="true">+</span>
+          </button>
+          <button type="button" class="tb" id="tb-term" data-win-btn="terminal" aria-pressed="false" aria-controls="win-term" aria-label="Terminal" data-tip="Terminal">
+            <span class="tb-ico" data-icon="bash"></span><span class="tb-badge num" id="dock-term-count" hidden></span>
+          </button>
+          <button type="button" class="tb" id="tb-lib" data-win-btn="library" aria-pressed="false" aria-controls="win-lib" aria-label="Bibliothèque" data-tip="Bibliothèque">
+            <span class="tb-ico" data-icon="books"></span><span class="tb-badge tb-badge--lib num" id="dock-lib-count" hidden></span>
+          </button>
+          <button type="button" class="tb" id="tb-ach" data-win-btn="achievements" aria-pressed="false" aria-controls="win-ach" aria-label="Succès" data-tip="Succès">
+            <span class="tb-ico" data-icon="trophy"></span><span class="tb-badge tb-badge--ach num" id="tb-ach-count" hidden></span>
+          </button>
+          <span class="tb-sep" aria-hidden="true"></span>
+          <button type="button" class="tb tb-toggle" id="btn-demo" aria-pressed="false" aria-label="Mode démo" data-tip="Mode démo : agents simulés, aucun token dépensé">
+            <span class="tb-ico" data-icon="gamepad"></span><span class="tb-led" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="tb tb-toggle" id="btn-observe" aria-pressed="false" aria-label="Sessions externes" data-tip="Sessions externes : affiche aussi Claude Code lancé ailleurs">
+            <span class="tb-ico" data-icon="eye"></span><span class="tb-led" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="tb tb-toggle" id="tb-tour" aria-pressed="false" aria-label="Visite guidée" data-tip="Visite guidée : la caméra passe d'agent en agent">
+            <span class="tb-ico" data-icon="camera"></span><span class="tb-led" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="tb tb-toggle" id="tb-sound" aria-pressed="false" aria-label="Son" data-tip="Son 8-bit (coupé par défaut)">
+            <span class="tb-ico" data-icon="mute"></span><span class="tb-led" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="tb" id="tb-full" aria-pressed="false" aria-label="Plein écran" data-tip="Plein écran">
+            <span class="tb-ico" data-icon="fullscreen"></span>
+          </button>
+        </nav>
+
+        <!-- Warning banners (Claude Code missing, session expired…) -->
+        <div class="banners" id="banners"></div>
+        <div class="toasts" id="toasts" aria-live="polite" aria-relevant="additions"></div>
+      </div>
+
+      <!-- Empty office: first steps -->
+      <div class="stage-empty px-panel" id="stage-empty" hidden>
+        <canvas class="empty-avatar" id="empty-avatar" aria-hidden="true"></canvas>
+        <div class="stage-empty-text">
+          <p class="stage-empty-title">Le bureau attend son équipe</p>
+          <p class="stage-empty-sub">Confie une mission à un agent, ouvre un terminal et tape <kbd>claude</kbd>, ou découvre le jeu sans dépenser de tokens.</p>
+          <div class="stage-empty-actions">
+            <button type="button" class="btn btn-primary btn-sm" id="stage-write">Nouvel agent</button>
+            <button type="button" class="btn btn-sm" id="stage-term"><span class="term-glyph" aria-hidden="true">&gt;_</span><span>Terminal</span></button>
+            <button type="button" class="btn btn-sm" id="stage-demo">Mode démo</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================== bottom row: minimap · équipe ============================== -->
+      <div class="hud-bottom" id="hud-bottom">
+        <section class="minimap px-panel" id="minimap-panel" data-open="true" aria-label="Plan du bureau">
+          <header class="mm-head">
+            <span class="px-label">Plan</span>
+            <label class="sr-only" for="mm-rooms">Aller à une pièce</label>
+            <select class="mm-rooms" id="mm-rooms" title="Aller à une pièce"></select>
+            <button type="button" class="mm-toggle" id="mm-toggle" aria-expanded="true" aria-controls="mm-body" aria-label="Masquer le plan" title="Masquer le plan">
+              <span class="chev" aria-hidden="true"></span>
+            </button>
+          </header>
+          <div class="mm-body" id="mm-body">
+            <canvas class="mm-canvas" id="minimap" aria-label="Plan miniature : clique pour déplacer la caméra" role="img"></canvas>
+            <p class="mm-hint">Molette : zoom · Glisser : déplacer · Double-clic : recentrer</p>
+          </div>
+        </section>
+
+        <section class="party px-panel" id="party" aria-labelledby="party-title">
+          <header class="party-head">
+            <h2 class="px-label" id="party-title">Équipe</h2>
+            <span class="count-badge num" id="roster-count" aria-label="Nombre d'agents">0</span>
+          </header>
+          <ul class="party-list" id="party-list" aria-label="Agents du bureau"></ul>
+          <p class="party-empty" id="party-empty">Personne au bureau pour l'instant.</p>
+        </section>
+      </div>
+
+      <!-- ============================== character sheet (selected agent) ============================== -->
+      <section class="win sheet" id="drawer" hidden aria-labelledby="d-name">
+        <header class="win-head sheet-head">
+          <span class="win-ico" data-icon="scroll"></span>
+          <span class="win-title">Fiche de personnage</span>
+          <button type="button" class="win-close" id="d-close" aria-label="Fermer la fiche (Échap)" title="Fermer (Échap)"><span aria-hidden="true">×</span></button>
+        </header>
+
+        <div class="sheet-hero">
+          <div class="sheet-portrait">
+            <canvas class="drawer-avatar" id="d-avatar" aria-hidden="true"></canvas>
+            <span class="lvl-badge num" id="d-level" title="Niveau">1</span>
+          </div>
+          <div class="sheet-id">
+            <h2 class="drawer-name" id="d-name">Agent</h2>
+            <p class="sheet-rank" id="d-level-title">Stagiaire</p>
+            <div class="xp" id="d-xp" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Expérience">
+              <span class="xp-fill" id="d-xp-fill"></span>
+              <span class="xp-text num" id="d-xp-text"></span>
+            </div>
+            <div class="chips" id="d-chips"></div>
+          </div>
+        </div>
+
+        <div class="drawer-status">
+          <span class="pill" id="d-pill"><span class="pill-dot" aria-hidden="true"></span><span class="pill-label" id="d-pill-label"></span></span>
+          <span class="drawer-activity" id="d-activity"></span>
+          <span class="drawer-timer num" id="d-timer-top" title="Durée de travail">00:00</span>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="Fiche de l'agent">
+          <button type="button" class="tab" role="tab" id="tab-info" aria-controls="panel-info" aria-selected="true" tabindex="0">Fiche</button>
+          <button type="button" class="tab" role="tab" id="tab-log" aria-controls="panel-log" aria-selected="false" tabindex="-1">Journal <span class="tab-badge num" id="log-badge" hidden></span></button>
+        </div>
+
+        <div class="tabpanel" role="tabpanel" id="panel-info" aria-labelledby="tab-info" tabindex="0">
+          <details class="block block-fold block-mission" id="d-prompt-block" open>
+            <summary class="block-title">Mission</summary>
+            <p class="prewrap textbox" id="d-prompt"></p>
+          </details>
+
+          <section class="block" aria-labelledby="d-tok-title">
+            <h3 class="block-title" id="d-tok-title">Statistiques <span class="block-meta num" id="d-tok-total">0</span><span class="block-unit">tokens</span></h3>
+            <ul class="rpg-bars" id="d-tokbar" aria-label="Répartition des tokens">
+              <li class="rpg"><span class="rpg-name">Entrée</span><span class="rpg-track"><span class="rpg-fill seg-in" id="d-seg-in"></span></span><span class="rpg-val num" id="d-tok-in">0</span></li>
+              <li class="rpg"><span class="rpg-name">Sortie</span><span class="rpg-track"><span class="rpg-fill seg-out" id="d-seg-out"></span></span><span class="rpg-val num" id="d-tok-out">0</span></li>
+              <li class="rpg"><span class="rpg-name">Cache lu</span><span class="rpg-track"><span class="rpg-fill seg-cr" id="d-seg-cr"></span></span><span class="rpg-val num" id="d-tok-cr">0</span></li>
+              <li class="rpg"><span class="rpg-name">Cache écrit</span><span class="rpg-track"><span class="rpg-fill seg-cw" id="d-seg-cw"></span></span><span class="rpg-val num" id="d-tok-cw">0</span></li>
+            </ul>
+          </section>
+
+          <dl class="facts">
+            <div class="fact">
+              <dt>Coût</dt>
+              <dd class="num" id="d-cost">—</dd>
+            </div>
+            <div class="fact" title="Nombre d'outils utilisés">
+              <dt>Outils</dt>
+              <dd class="num" id="d-tools">0</dd>
+            </div>
+            <div class="fact">
+              <dt>Tours</dt>
+              <dd class="num" id="d-turns">0</dd>
+            </div>
+            <div class="fact">
+              <dt>Temps</dt>
+              <dd class="num" id="d-timer">00:00</dd>
+            </div>
+            <div class="fact fact-wide">
+              <dt>Modèle</dt>
+              <dd id="d-model">—</dd>
+            </div>
+            <div class="fact fact-wide" id="d-parent-row" hidden>
+              <dt>Agent parent</dt>
+              <dd><button type="button" class="linkish" id="d-parent"></button></dd>
+            </div>
+            <div class="fact fact-wide">
+              <dt>Dossier</dt>
+              <dd class="mono path" id="d-cwd">—</dd>
+            </div>
+            <div class="fact fact-wide">
+              <dt>Session</dt>
+              <dd class="session-row">
+                <code class="mono session-id" id="d-session">—</code>
+                <button type="button" class="btn btn-xs" id="d-copy" hidden>Copier</button>
+              </dd>
+            </div>
+            <div class="fact fact-wide">
+              <dt>Horaires</dt>
+              <dd class="num" id="d-times">—</dd>
+            </div>
+          </dl>
+
+          <section class="block block-err" id="d-error-block" hidden aria-labelledby="d-error-title">
+            <h3 class="block-title" id="d-error-title">Erreur</h3>
+            <p class="prewrap" id="d-error"></p>
+          </section>
+
+          <section class="block" id="d-result-block" hidden aria-labelledby="d-result-title">
+            <h3 class="block-title" id="d-result-title">Résultat</h3>
+            <p class="prewrap textbox" id="d-result"></p>
+          </section>
+
+          <section class="block" id="d-last-block" hidden aria-labelledby="d-last-title">
+            <h3 class="block-title" id="d-last-title">Dernier message</h3>
+            <p class="prewrap textbox" id="d-last"></p>
+          </section>
+
+          <section class="block" id="d-subs-block" hidden aria-labelledby="d-subs-title">
+            <h3 class="block-title" id="d-subs-title">Sous-agents <span class="block-meta num" id="d-subs-count">0</span></h3>
+            <ul class="subs" id="d-subs"></ul>
+          </section>
+        </div>
+
+        <div class="tabpanel tabpanel-log" role="tabpanel" id="panel-log" aria-labelledby="tab-log" tabindex="0" hidden>
+          <p class="log-empty" id="d-log-empty">Aucun événement pour l'instant.</p>
+          <ol class="logfeed" id="d-log" aria-label="Journal d'activité"></ol>
+          <button type="button" class="btn btn-sm log-jump" id="d-log-jump" hidden>Nouveaux événements ↓</button>
+        </div>
+
+        <footer class="drawer-foot">
+          <form class="followup" id="d-followup" hidden novalidate>
+            <label class="sr-only" for="d-followup-text">Nouvelle consigne</label>
+            <textarea id="d-followup-text" rows="2" placeholder="Donner une nouvelle consigne… (Ctrl+Entrée)"></textarea>
+            <button type="submit" class="btn btn-primary" id="d-send">Envoyer</button>
+          </form>
+          <p class="foot-err" id="d-followup-err" role="alert" hidden></p>
+          <p class="foot-note" id="d-note" hidden></p>
+          <div class="foot-actions">
+            <button type="button" class="btn btn-warn" id="d-stop" hidden>Arrêter</button>
+            <button type="button" class="btn" id="d-term" hidden>
+              <span class="term-glyph" aria-hidden="true">&gt;_</span><span>Voir son terminal</span>
+            </button>
+            <span class="foot-spacer"></span>
+            <button type="button" class="btn btn-ghost" id="d-remove">Retirer</button>
+            <div class="confirm-box" id="d-remove-confirm" hidden role="group" aria-labelledby="d-remove-q">
+              <span class="confirm-q" id="d-remove-q">Retirer cet agent ?</span>
+              <button type="button" class="btn btn-danger btn-sm" id="d-remove-yes">Oui, retirer</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="d-remove-no">Annuler</button>
+            </div>
+          </div>
+        </footer>
+      </section>
+
+      <!-- ============================== window « Nouvel agent » ============================== -->
+      <section class="win" id="win-agent" data-win="agent" role="dialog" aria-modal="false" aria-labelledby="win-agent-title" hidden>
+        <header class="win-head" data-drag>
+          <span class="win-ico" data-icon="agent"></span>
+          <h2 class="win-title" id="win-agent-title">Nouvel agent</h2>
+          <span class="win-hint"><kbd>Ctrl</kbd> + <kbd>Entrée</kbd> pour lancer</span>
+          <button type="button" class="win-close" data-close aria-label="Fermer la fenêtre « Nouvel agent »" title="Fermer"><span aria-hidden="true">×</span></button>
+        </header>
+        <div class="win-body">
+          <form class="launch" id="launch-form" novalidate autocomplete="off">
+            <div class="launch-main">
+              <div class="field field-prompt" id="fld-prompt">
+                <label for="f-prompt">Mission</label>
+                <textarea id="f-prompt" rows="5" spellcheck="true" aria-describedby="f-prompt-err" placeholder="Que doit faire l'agent ? Ex. : « Analyse ce projet et résume son architecture dans un fichier NOTES.md »"></textarea>
+                <p class="field-err" id="f-prompt-err" hidden></p>
+              </div>
+            </div>
+
+            <div class="launch-opts">
+              <div class="field" id="fld-name">
+                <label for="f-name">Nom</label>
+                <input type="text" id="f-name" class="input" maxlength="24" spellcheck="false" autocomplete="off" aria-describedby="f-name-err" placeholder="Nova">
+                <p class="field-err" id="f-name-err" hidden></p>
+              </div>
+              <div class="field">
+                <label for="f-model">Modèle</label>
+                <select id="f-model" class="input"></select>
+              </div>
+              <div class="field">
+                <label for="f-effort">Effort</label>
+                <select id="f-effort" class="input"></select>
+              </div>
+              <div class="field field-span field-profile">
+                <label for="f-profile">Profil</label>
+                <select id="f-profile" class="input" aria-describedby="f-profile-desc"></select>
+                <p class="field-hint" id="f-profile-desc" hidden></p>
+              </div>
+              <div class="field field-span">
+                <label for="f-perm">Permissions</label>
+                <select id="f-perm" class="input" aria-describedby="f-perm-warn"></select>
+                <p class="field-warn" id="f-perm-warn" hidden></p>
+              </div>
+              <fieldset class="field field-span field-colors">
+                <legend>Couleur</legend>
+                <div class="swatches" id="f-colors"></div>
+              </fieldset>
+              <div class="field field-span" id="fld-cwd">
+                <label for="f-cwd">Dossier de travail</label>
+                <input type="text" id="f-cwd" class="input mono" spellcheck="false" autocomplete="off" aria-describedby="f-cwd-err" placeholder="C:\Users\toi\projet">
+                <p class="field-err" id="f-cwd-err" hidden></p>
+              </div>
+            </div>
+
+            <div class="launch-submit">
+              <p class="form-err" id="f-error" role="alert" hidden></p>
+              <p class="form-note" id="f-note" hidden></p>
+              <button type="submit" class="btn btn-primary btn-launch" id="f-submit">
+                <span class="btn-launch-label" id="f-submit-label">Lancer l'agent</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ============================== window « Terminal » (resizable) ============================== -->
+      <section class="win win--term" id="win-term" data-win="terminal" role="dialog" aria-modal="false" aria-labelledby="win-term-title" hidden>
+        <header class="win-head" data-drag>
+          <span class="win-ico" data-icon="bash"></span>
+          <h2 class="win-title" id="win-term-title">Terminal</h2>
+          <span class="win-hint">Tape <kbd>claude</kbd> : la session rejoint le bureau</span>
+          <button type="button" class="win-close" data-close aria-label="Fermer la fenêtre « Terminal » (les terminaux continuent de tourner)" title="Fermer (les terminaux continuent de tourner)"><span aria-hidden="true">×</span></button>
+        </header>
+        <div class="win-body win-body--flex">
+          <!-- Integrated terminal: toolbar (ui.js), tabs + xterm sessions (terminal.js) -->
+          <div class="term-panel" id="term-panel">
+            <div class="term-unsupported" id="term-unsupported" role="status">
+              <span class="term-unsupported-ico term-glyph" aria-hidden="true">&gt;_</span>
+              <div class="term-unsupported-text">
+                <p class="term-unsupported-title" id="term-unsupported-title">Terminal intégré</p>
+                <p id="term-unsupported-reason">Connexion au serveur…</p>
+              </div>
+            </div>
+
+            <div class="term-main" id="term-main" hidden>
+              <form class="term-tools" id="term-tools" novalidate autocomplete="off">
+                <div class="field term-field-cwd" id="fld-t-cwd">
+                  <label for="t-cwd">Dossier</label>
+                  <input type="text" id="t-cwd" class="input mono" spellcheck="false" autocomplete="off" placeholder="C:\Users\toi\projet" title="Dossier de départ du terminal (le même que pour « Nouvel agent »)">
+                </div>
+                <div class="field term-field-name" id="fld-t-name">
+                  <label for="t-name">Nom</label>
+                  <input type="text" id="t-name" class="input" maxlength="24" spellcheck="false" autocomplete="off" placeholder="Automatique" title="Nom donné aux sessions Claude Code lancées dans ce terminal (automatique si vide)">
+                </div>
+                <div class="field term-field-profile">
+                  <label for="t-profile">Profil</label>
+                  <select id="t-profile" class="input" title="Agent de la bibliothèque utilisé par « Lancer Claude Code »"></select>
+                </div>
+                <fieldset class="field term-field-color">
+                  <legend>Couleur</legend>
+                  <div class="swatches swatches--sm" id="t-colors"></div>
+                </fieldset>
+                <div class="term-actions">
+                  <button type="button" class="btn" id="t-new" title="Ouvrir un invite de commandes (cmd.exe) dans ce dossier">
+                    <span data-label>Nouveau terminal</span>
+                  </button>
+                  <button type="submit" class="btn btn-primary" id="t-claude" title="Ouvrir un terminal et y lancer Claude Code">
+                    <span data-label>Lancer Claude Code</span>
+                  </button>
+                </div>
+              </form>
+              <p class="term-err" id="t-error" role="alert" hidden></p>
+
+              <div class="term-bar">
+                <div class="term-tabs" id="term-tabs" role="tablist" aria-label="Terminaux ouverts"></div>
+              </div>
+
+              <div class="term-confirm" id="term-confirm" role="group" aria-labelledby="term-confirm-q" hidden>
+                <span class="confirm-q" id="term-confirm-q">Fermer ce terminal ?</span>
+                <button type="button" class="btn btn-danger btn-sm" id="term-confirm-yes"><span data-label>Oui, fermer</span></button>
+                <button type="button" class="btn btn-ghost btn-sm" id="term-confirm-no">Annuler</button>
+              </div>
+
+              <div class="term-stage" id="term-stage">
+                <div class="term-head" id="term-head" hidden>
+                  <span class="term-cwd mono" id="term-cwd"></span>
+                  <span class="term-state" id="term-state" hidden></span>
+                  <div class="term-links" id="term-links" aria-label="Sessions Claude Code liées à ce terminal"></div>
+                </div>
+                <div class="term-viewport" id="term-viewport"></div>
+                <div class="term-ended" id="term-ended" hidden>
+                  <span class="term-ended-text" id="term-ended-text">Ce terminal est arrêté.</span>
+                  <button type="button" class="btn btn-sm" id="term-reopen"><span data-label>Nouveau terminal ici</span></button>
+                  <button type="button" class="btn btn-ghost btn-sm" id="term-dismiss">Fermer l'onglet</button>
+                </div>
+                <div class="term-empty" id="term-empty">
+                  <span class="term-empty-ico term-glyph" aria-hidden="true">&gt;_</span>
+                  <p class="term-empty-title">Aucun terminal ouvert</p>
+                  <p class="term-empty-text">Ouvre un invite de commandes et tape <kbd>claude</kbd> : chaque session Claude Code lancée ici apparaît au bureau, avec ses tokens et son activité.</p>
+                  <div class="term-empty-actions">
+                    <button type="button" class="btn btn-primary btn-sm" id="t-empty-claude"><span data-label>Lancer Claude Code</span></button>
+                    <button type="button" class="btn btn-sm" id="t-empty-new"><span data-label>Nouveau terminal</span></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="win-grip" data-resize aria-hidden="true" title="Redimensionner"></div>
+      </section>
+
+      <!-- ============================== window « Bibliothèque » ============================== -->
+      <section class="win win--lib" id="win-lib" data-win="library" role="dialog" aria-modal="false" aria-labelledby="win-lib-title" hidden>
+        <header class="win-head" data-drag>
+          <span class="win-ico" data-icon="books"></span>
+          <h2 class="win-title" id="win-lib-title">Bibliothèque</h2>
+          <span class="win-hint">Skills et agents partagés depuis GitHub</span>
+          <button type="button" class="win-close" data-close aria-label="Fermer la fenêtre « Bibliothèque »" title="Fermer"><span aria-hidden="true">×</span></button>
+        </header>
+        <div class="win-body">
+          <!-- Library of linked GitHub repos (skills / agents / commands), rendered by ui.js -->
+          <div class="lib-panel" id="lib-panel">
+            <div class="lib-top">
+              <div class="lib-nogit" id="lib-nogit" role="status" hidden>
+                <span class="lib-nogit-ico" aria-hidden="true">!</span>
+                <div>
+                  <p class="lib-nogit-title">Git n'est pas installé</p>
+                  <p class="lib-nogit-text">La bibliothèque clone les dépôts GitHub avec Git. Installe-le depuis <a href="https://git-scm.com" target="_blank" rel="noopener noreferrer">git-scm.com</a>, puis relance PixelQG.</p>
+                </div>
+              </div>
+              <form class="lib-form" id="lib-form" novalidate autocomplete="off">
+                <div class="field lib-field-url" id="fld-lib-url">
+                  <label for="lib-url">Lien GitHub</label>
+                  <div class="lib-input-row">
+                    <input type="text" id="lib-url" class="input mono" spellcheck="false" autocomplete="off" placeholder="anthropics/skills" aria-describedby="lib-error lib-note">
+                    <button type="submit" class="btn btn-primary" id="lib-submit"><span data-label>Lier le dépôt</span></button>
+                  </div>
+                </div>
+                <div class="lib-suggest" id="lib-suggest">
+                  <span class="lib-suggest-label">Suggestions :</span>
+                </div>
+                <p class="lib-err" id="lib-error" role="alert" hidden></p>
+              </form>
+              <p class="lib-note" id="lib-note"><span class="lib-note-ico" aria-hidden="true"></span>Les skills et agents donnent des instructions à Claude : ne lie que des dépôts de confiance. Hooks et serveurs MCP ne sont jamais chargés.</p>
+            </div>
+            <ul class="lib-list" id="lib-list" aria-label="Dépôts liés"></ul>
+            <div class="lib-empty" id="lib-empty">
+              <span class="lib-empty-ico" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+              <p class="lib-empty-title" id="lib-empty-title">Aucun dépôt lié</p>
+              <p class="lib-empty-text" id="lib-empty-text">Colle le lien d'un dépôt GitHub de skills ou d'agents Claude Code : PixelQG le clone et tous les agents que tu lances ici peuvent s'en servir, sans toucher à ta configuration Claude Code.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================== window « Succès » ============================== -->
+      <section class="win win--ach" id="win-ach" data-win="achievements" role="dialog" aria-modal="false" aria-labelledby="win-ach-title" hidden>
+        <header class="win-head" data-drag>
+          <span class="win-ico" data-icon="trophy"></span>
+          <h2 class="win-title" id="win-ach-title">Succès</h2>
+          <span class="win-hint" id="ach-hint">Débloque-les en faisant travailler ton équipe</span>
+          <button type="button" class="win-close" data-close aria-label="Fermer la fenêtre « Succès »" title="Fermer"><span aria-hidden="true">×</span></button>
+        </header>
+        <div class="win-body">
+          <div class="ach-summary">
+            <span class="ach-count num" id="ach-count">0 / 0</span>
+            <span class="xp ach-progress" aria-hidden="true"><span class="xp-fill" id="ach-fill"></span></span>
+          </div>
+          <dl class="ach-stats" id="ach-stats" aria-label="Tes statistiques"></dl>
+          <ul class="ach-list" id="ach-list" aria-label="Liste des succès"></ul>
+          <p class="ach-empty" id="ach-empty" hidden>Les succès arrivent bientôt : le module de progression n'est pas encore chargé.</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="vendor/xterm/xterm.js"></script>
+  <script src="vendor/xterm/addon-fit.js"></script>
+  <script src="vendor/xterm/addon-canvas.js"></script>
+  <script src="js/game/progression.js"></script>
+  <script src="js/game/sprites.js"></script>
+  <script src="js/game/office.js"></script>
+  <script src="js/game/lighting.js"></script>
+  <script src="js/game/characters.js"></script>
+  <script src="js/game/pets.js"></script>
+  <script src="js/game/engine.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/terminal.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

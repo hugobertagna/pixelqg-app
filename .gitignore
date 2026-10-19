@@ -1,0 +1,14 @@
+# Dependencies and build output
+node_modules/
+launcher/dist/
+server/bin/*.exe
+server/bin/hq-pty-build-*
+
+# Local copies and logs
+backups/
+*.log
+
+# OS files
+Thumbs.db
+desktop.ini
+.DS_Store

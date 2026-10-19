@@ -1,0 +1,17 @@
+{
+  "name": "pixelqg-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PixelQG : un bureau en pixel art où tu regardes tes agents Claude Code travailler.",
+  "type": "commonjs",
+  "main": "server/server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server/server.js",
+    "demo": "node server/server.js --demo",
+    "test": "node --test server/test"
+  },
+  "license": "UNLICENSED"
+}
