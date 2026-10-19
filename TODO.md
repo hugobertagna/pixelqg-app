@@ -3,8 +3,8 @@
 Liste notée le 19 octobre 2026. Ordre de la liste = ordre donné, pas une priorité.
 
 ## À finir
-- [ ] **Confidentialité, à faire avant toute mise en ligne :** retirer ton vrai nom d'utilisateur et tes chemins de dossiers de toutes les images du site, de la vidéo de démo et de la boucle vidéo du haut de page. Les remplacer par un profil fictif, par exemple `C:\Users\alex\Projets\…`.
-  Comment : refaire les captures avec un profil Windows fictif pour le serveur de démo, puis régénérer les images et les vidéos du site.
+- [x] **Confidentialité :** ton nom d'utilisateur a été retiré des images, vidéos et textes du site (chemins en `C:\Users\alex`). Fait le 19 octobre.
+- [ ] **Recapturer les images du site avec la nouvelle interface de jeu.** Elles montrent encore l'ancienne interface, avec le profil fictif.
 - [x] **Renommer le dossier `claude-hq` en `pixelqg-app`.** Fait le 19 octobre.
 
 ## Vidéo
