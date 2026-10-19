@@ -27,12 +27,13 @@ Liste notée le 19 octobre 2026. Ordre de la liste = ordre donné, pas une prior
   Note : demande un accès sécurisé de l'extérieur (authentification solide). Piste à étudier : la fonction Remote Control de Claude Code.
 
 ## Site
+- [x] **Workshop communautaire (v1) :** page `workshop.html`, publication réservée aux acheteurs, commentaires. Fait le 19 octobre. Reste éventuellement : packs payants.
 - [ ] **Shop communautaire de packs de skills et d'agents :** les gens publient leurs agents, gratuits ou payants, avec des commentaires. Il faudra des comptes utilisateurs, donc un vrai serveur et une base de données.
   On détaillera ensemble : modération, paiements, sécurité des packs.
 
 ## Licence et comptes
-- [ ] **Licence liée à un compte :** à l'installation, l'appli demande de se connecter. Sans compte connecté avec une licence valide, l'appli ne s'utilise pas.
-  Note : ce sont les mêmes comptes que le site et le shop. Il faut un serveur de licences : achat, activation sur un PC, vérification au démarrage. Il faut aussi décider combien de temps l'appli marche hors connexion, et sur combien de PC une licence s'active.
+- [x] **Licence liée à un compte :** connexion obligatoire dans l'appli, certificat signé par PC (3 PC par licence, valable 14 jours hors ligne), backend Supabase « pixelqg » (Paris). Fait le 19 octobre.
+- [ ] **Stripe (en dernier) :** lien de paiement à 10 €, webhook vers la fonction `stripe-webhook`, secret `STRIPE_WEBHOOK_SECRET`. En attendant, licences attribuées à la main depuis « Mon compte ».
 - [ ] **Créer ton compte administrateur** (gestion des comptes, licences et shop). Je te guiderai étape par étape. C'est toi qui créeras le compte et choisiras le mot de passe.
 
 ## Lancement et pub
