@@ -55,18 +55,18 @@
   function n(s, k) { return s && typeof s[k] === 'number' && isFinite(s[k]) ? s[k] : 0; }
 
   const ACHIEVEMENTS = [
-    { id: 'premier-pas', icon: 'star', title: 'Premier pas', description: 'Lance ton tout premier agent.', test: (s) => n(s, 'agentsLaunched') >= 1 },
+    { id: 'premier-pas', icon: 'star', title: 'Premier pas', description: 'Lance ton tout premier pix.', test: (s) => n(s, 'agentsLaunched') >= 1 },
     { id: 'mission-accomplie', icon: 'trophy', title: 'Mission accomplie', description: 'Termine 10 tâches avec succès.', test: (s) => n(s, 'done') >= 10 },
-    { id: 'open-space', icon: 'crown', title: 'Open space bondé', description: 'Fais travailler 5 agents en même temps.', test: (s) => n(s, 'maxConcurrent') >= 5 },
-    { id: 'fourmiliere', icon: 'flame', title: 'La fourmilière', description: 'Atteins 12 agents actifs en même temps.', test: (s) => n(s, 'maxConcurrent') >= 12 },
-    { id: 'rat-de-bibliotheque', icon: 'book', title: 'Rat de bibliothèque', description: 'Fais lire 100 fichiers à tes agents.', test: (s) => n(s, 'reads') >= 100 },
+    { id: 'open-space', icon: 'crown', title: 'Open space bondé', description: 'Fais travailler 5 pix en même temps.', test: (s) => n(s, 'maxConcurrent') >= 5 },
+    { id: 'fourmiliere', icon: 'flame', title: 'La fourmilière', description: 'Atteins 12 pix actifs en même temps.', test: (s) => n(s, 'maxConcurrent') >= 12 },
+    { id: 'rat-de-bibliotheque', icon: 'book', title: 'Rat de bibliothèque', description: 'Fais lire 100 fichiers à tes pix.', test: (s) => n(s, 'reads') >= 100 },
     { id: 'sherlock', icon: 'magnifier', title: 'Sherlock', description: 'Lance 50 recherches dans le code.', test: (s) => n(s, 'searches') >= 50 },
     { id: 'plume-infatigable', icon: 'pencil', title: 'Plume infatigable', description: 'Cumule 100 modifications ou créations de fichiers.', test: (s) => n(s, 'edits') + n(s, 'writes') >= 100 },
     { id: 'pilote-de-terminal', icon: 'terminal', title: 'Pilote de terminal', description: 'Exécute 100 commandes.', test: (s) => n(s, 'bashes') >= 100 },
     { id: 'tout-est-vert', icon: 'check', title: 'Tout est vert', description: 'Lance 25 séries de tests ou de builds.', test: (s) => n(s, 'tests') >= 25 },
     { id: 'facteur', icon: 'letter', title: 'Le facteur sonne toujours deux fois', description: 'Envoie 20 opérations git au bureau de poste.', test: (s) => n(s, 'gits') >= 20 },
     { id: 'globe-trotteur', icon: 'globe', title: 'Globe-trotteur', description: 'Visite le web 30 fois.', test: (s) => n(s, 'webs') >= 30 },
-    { id: 'chef-orchestre', icon: 'crown', title: "Chef d'orchestre", description: 'Fais naître 10 sous-agents.', test: (s) => n(s, 'subagents') >= 10 },
+    { id: 'chef-orchestre', icon: 'crown', title: "Chef d'orchestre", description: 'Fais naître 10 sous-pix.', test: (s) => n(s, 'subagents') >= 10 },
     { id: 'post-it', icon: 'clock', title: 'Roi du post-it', description: 'Organise ou délègue 20 tâches en réunion.', test: (s) => n(s, 'tasks') >= 20 },
     { id: 'boite-a-outils', icon: 'wrench', title: 'Boîte à outils', description: 'Utilise 500 outils au total.', test: (s) => n(s, 'toolsUsed') >= 500 },
     { id: 'premier-million', icon: 'coin', title: 'Premier million', description: 'Dépense 1 000 000 tokens.', test: (s) => n(s, 'totalTokens') >= 1000000 },

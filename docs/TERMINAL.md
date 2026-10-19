@@ -55,7 +55,21 @@ Terminal = { id: "t1", title: "Terminal 1", cwd, shell: "cmd.exe", status: "runn
 - `write(id, data)`, `resize(id, cols, rows)` (clamp 20–400 × 5–200), `kill(id)`, `remove(id)` (kill + forget; linked agents stay).
 - On exit: status exited, exitCode, endedAt; linked agents still running → done (or stopped if killed).
 - Max 8 live terminals (409 + French message beyond). All terminals killed on server shutdown.
-- Non-Windows or bridge unavailable: `config.terminal = { supported: false, reason: "…" }`; routes answer 501.
+- Bridge unavailable (or `script` missing on macOS / Linux, or another OS): `config.terminal = { supported: false, reason: "…" }`; routes answer 501.
+
+### 2b. macOS / Linux mode (experimental, never tested on a real Mac)
+No ConPTY bridge: the user's shell (`$SHELL`, else /bin/bash, else /bin/sh; `config.terminal.shell` = its basename) runs in
+the pseudo-terminal of the system `script` command, spawned hidden in its own process group, stdin/stdout as raw bytes (no frames):
+- macOS: `script -q /dev/null /bin/sh -c "<inner>"` · Linux (util-linux): `script -qefc "<inner>" /dev/null` (-e: shell exit code).
+- `<inner>` = `stty cols C rows R 2>/dev/null; exec '<shell>' [--rcfile server/shim/posix/bashrc]`. `script` cannot resize its
+  pseudo-terminal, so the shell starts on the page's FIRST resize message (or after 1 s with 120×30) and later resizes are ignored
+  (`resize()` returns false). A dim notice at the top of the terminal says so.
+- Env: as on Windows (PATH = `server/shim:<PATH>` with the POSIX shim `server/shim/claude`, chmod 755 at init) plus
+  `TERM=xterm-256color`, `COLORTERM=truecolor`, `SHELL`, a UTF-8 `LANG` when no locale is set; `TERM_PROGRAM*`, `COLUMNS`, `LINES` removed.
+  bash gets `--rcfile server/shim/posix/bashrc`, zsh `ZDOTDIR=server/shim/posix/zsh` (+ `PIXELQG_USER_ZDOTDIR`): both load the
+  user's own rc files, then define a `claude` shell function calling the shim, so an rc file that reorders PATH cannot bypass it.
+- Kill = SIGKILL to `script`: the kernel hangs up the pseudo-terminal (SIGHUP to the shell and its jobs). util-linux `script`
+  ignores SIGHUP and hands SIGTERM to the shell, which ignores it when interactive.
 
 ## 3. The `claude` shim — `server/shim/claude.cmd` + `server/claude-shim.js`
 `claude.cmd`: `@"%PIXELQG_NODE%" "%PIXELQG_SHIM%" %*` (CRLF line endings). Because the shim dir is first in PATH,

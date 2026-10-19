@@ -3,8 +3,8 @@
  *
  * The office canvas fills the window; this module renders everything that floats above it:
  * the « ressources » bar (tokens counter hit by the flying coins, cost, agents, time, connection,
- * Claude Code version), the icon toolbar, the « équipe » party bar, the minimap frame, the character
- * sheet of the selected agent (stats, journal, actions), the draggable game windows (Nouvel agent,
+ * Claude Code version), the icon toolbar, the « Tes pix » party bar, the minimap frame, the character
+ * sheet of the selected agent (stats, journal, actions), the draggable game windows (Nouveau pix,
  * Terminal, Bibliothèque, Succès), achievements, game toasts, banners and plain toasts.
  * main.js owns the agent store, the API client and the SSE connection; it hands this module read
  * accessors and action callbacks through init().
@@ -21,11 +21,11 @@
     'Noisette', 'Kiwi', 'Comète', 'Sirius', 'Galette', 'Écho', 'Pistache', 'Nimbus', 'Caramel', 'Vega', 'Myrtille',
     'Quartz', 'Sésame', 'Lyra'];
 
-  const DEFAULT_COLORS = ['#D97757', '#5BA4E6', '#7BC67E', '#B48EE0', '#F2C14E', '#E0709B', '#4FC1B9', '#E8955A',
+  const DEFAULT_COLORS = ['#FF8A5B', '#5BA4E6', '#7BC67E', '#B48EE0', '#F2C14E', '#E0709B', '#4FC1B9', '#E8955A',
     '#8E9BF0', '#C9D86B', '#F07C6C', '#A0A7B8'];
 
   const COLOR_NAMES = {
-    '#D97757': 'Terre cuite', '#5BA4E6': 'Bleu ciel', '#7BC67E': 'Vert tendre', '#B48EE0': 'Lavande',
+    '#FF8A5B': 'Corail', '#5BA4E6': 'Bleu ciel', '#7BC67E': 'Vert tendre', '#B48EE0': 'Lavande',
     '#F2C14E': 'Moutarde', '#E0709B': 'Rose', '#4FC1B9': 'Turquoise', '#E8955A': 'Abricot',
     '#8E9BF0': 'Pervenche', '#C9D86B': 'Anis', '#F07C6C': 'Corail', '#A0A7B8': 'Gris perle'
   };
@@ -373,7 +373,7 @@
     clock: ['.######.', '#......#', '#..#...#', '#..#...#', '#..###.#', '#......#', '#......#', '.######.'],
     tokens: ['........', '.######.', '........', '.######.', '........', '.######.', '........', '........'],
     // HUD
-    agent: ['........', '.######.', '.#.##.#.', '########', '########', '.######.', '.#.##.#.', '........'],
+    agent: ['...##...', '....#...', '########', '#.#..#.#', '#.#..#.#', '########', '..####..', '..#..#..'],
     books: ['........', '#.##.#..', '#.##.##.', '#.##.##.', '#.##..##', '#.##..##', '########', '........'],
     trophy: ['########', '#.####.#', '.######.', '..####..', '...##...', '...##...', '..####..', '.######.'],
     eye: ['........', '..####..', '.#....#.', '#..##..#', '#..##..#', '.#....#.', '..####..', '........'],
@@ -396,7 +396,7 @@
   // Names used by the achievements (progression.js) that map onto existing drawings.
   const ICON_ALIAS = {
     lightbulb: 'think', bulb: 'think', book: 'read', wrench: 'tool', terminal: 'bash', globe: 'web',
-    mail: 'letter', envelope: 'letter', check: 'done', team: 'agent', robot: 'agent', clawd: 'agent', cup: 'trophy',
+    mail: 'letter', envelope: 'letter', check: 'done', team: 'agent', robot: 'agent', bot: 'agent', cup: 'trophy',
     magnifier: 'search', pencil: 'edit', paper: 'write', gear: 'system', sparkle: 'star'
   };
 
@@ -573,6 +573,14 @@
     return 'rgb(' + r + ',' + g + ',' + b + ')';
   }
 
+  /** PixelQG robot map for the stand-in avatar (A antenna, G stalk, K ink, C casing, H highlight,
+   *  S screen, E eye, D body, L chest light). */
+  const FALLBACK_BOT = [
+    '.....AA.....', '......G.....', '..KKKKKKKK..', '.KCHHCCCCCK.', '.KCSSSSSSCK.',
+    '.KCSESSESCK.', '.KCSESSESCK.', '.KCSSSSSSCK.', '.KCCCCCCCCK.', '..KKKKKKKK..',
+    '...KDDDDK...', '..KDDLLDDK..', '..KDDDDDDK..', '...KK..KK...', '...KK..KK...'
+  ];
+
   /** Local stand-in used only when HQGame.drawAvatar is missing or throws. */
   function fallbackAvatar(canvas, color, opts) {
     const size = Math.max(8, Math.round(toNum(opts && opts.size) || 48));
@@ -595,18 +603,17 @@
       ctx.fillRect(Math.round(x * u), Math.round(y * u), Math.ceil(w * u), Math.ceil(hgt * u));
     };
     const base = safeColor(color);
-    rect(3, 14, 10, 1, 'rgba(0,0,0,0.35)');
-    rect(3, 11, 1, 3, shade(base, -0.3));
-    rect(5, 11, 1, 3, shade(base, -0.3));
-    rect(10, 11, 1, 3, shade(base, -0.3));
-    rect(12, 11, 1, 3, shade(base, -0.3));
-    rect(2, 4 + bob, 12, 7, base);
-    rect(2, 4 + bob, 12, 1, shade(base, 0.3));
-    rect(2, 10 + bob, 12, 1, shade(base, -0.25));
-    rect(0, 6 + bob, 2, 2, base);
-    rect(14, 6 + bob, 2, 2, shade(base, -0.2));
-    rect(5, 6 + bob, 1, 2, '#1a1012');
-    rect(10, 6 + bob, 1, 2, '#1a1012');
+    const pal = {
+      A: '#ffc84a', G: '#8790b0', K: '#0a0b16', C: base, H: shade(base, 0.45), S: '#141a33', E: '#a6fff2',
+      D: shade(base, -0.32), L: shade(base, 0.7)
+    };
+    rect(3, 15, 10, 1, 'rgba(0,0,0,0.35)');
+    // The PixelQG robot, centred on the 16 x 16 grid; the head and body bob, the legs stay planted.
+    FALLBACK_BOT.forEach((row, y) => {
+      for (let x = 0; x < row.length; x++) {
+        if (row[x] !== '.') rect(x + 2, y + (y < 13 ? bob : 0), 1, 1, pal[row[x]]);
+      }
+    });
   }
 
   function drawAvatar(canvas, color, opts) {
@@ -973,7 +980,7 @@
   function setTourState(on) {
     tourOn = !!on;
     setAttr(els.tbTour, 'aria-pressed', tourOn ? 'true' : 'false');
-    setAttr(els.tbTour, 'data-tip', tourOn ? 'Visite guidée en cours : clique ou bouge le bureau pour l\'arrêter' : 'Visite guidée : la caméra passe d\'agent en agent');
+    setAttr(els.tbTour, 'data-tip', tourOn ? 'Visite guidée en cours : clique ou bouge le bureau pour l\'arrêter' : 'Visite guidée : la caméra passe de pix en pix');
   }
 
   function setSoundState(on) {
@@ -1101,13 +1108,13 @@
     const active = Math.max(0, Math.round(toNum(s.active)));
     const total = Math.max(0, Math.round(toNum(s.total)));
     setText(els.statActive, fmtInt(active) + ' / ' + fmtInt(total));
-    setAttr(els.statActive.parentNode, 'title', fmtInt(active) + ' agent' + (active > 1 ? 's' : '') + ' au travail sur ' + fmtInt(total));
+    setAttr(els.statActive.parentNode, 'title', fmtInt(active) + ' pix au travail sur ' + fmtInt(total));
     setTokenTarget(s.tokens);
     setAttr(els.resCoins, 'title', 'Tokens totaux : ' + fmtInt(s.tokens) + ' (entrée, sortie et cache)');
     setText(els.statCost, fmtCost(toNum(s.cost)));
-    setAttr(els.statCost.parentNode, 'title', 'Coût cumulé des agents principaux (sous-agents inclus)');
+    setAttr(els.statCost.parentNode, 'title', 'Coût cumulé des pix principaux (sous-pix inclus)');
     setText(els.statTime, fmtDuration(s.timeMs));
-    setAttr(els.statTime.parentNode, 'title', 'Temps cumulé : somme des durées de travail des agents principaux');
+    setAttr(els.statTime.parentNode, 'title', 'Temps cumulé : somme des durées de travail des pix principaux');
   }
 
   function setConnection(state, info) {
@@ -1350,7 +1357,7 @@
   function updatePermWarning() {
     const opt = permOptions().find((o) => o.value === els.perm.value);
     if (opt && opt.danger) {
-      setText(els.permWarn, 'Attention : avec « ' + opt.label + ' », l\'agent peut exécuter n\'importe quelle commande et modifier ou supprimer tes fichiers sans rien demander. À réserver à un dossier de test.');
+      setText(els.permWarn, 'Attention : avec « ' + opt.label + ' », le pix peut exécuter n\'importe quelle commande et modifier ou supprimer tes fichiers sans rien demander. À réserver à un dossier de test.');
       setHidden(els.permWarn, false);
     } else {
       setHidden(els.permWarn, true);
@@ -1393,7 +1400,7 @@
   function updateLaunchAvailability() {
     const allowed = launchAllowed();
     if (!allowed) {
-      setText(els.formNote, 'Claude Code est introuvable sur cet ordinateur : impossible de lancer un agent.');
+      setText(els.formNote, 'Claude Code est introuvable sur cet ordinateur : impossible de lancer un pix.');
       setHidden(els.formNote, false);
       setAttr(els.submit, 'aria-disabled', 'true');
     } else {
@@ -1449,7 +1456,7 @@
     const name = els.name.value.trim();
     const cwd = els.cwd.value.trim();
     const errors = {};
-    if (!prompt.trim()) errors.prompt = 'Décris la mission de l\'agent avant de le lancer.';
+    if (!prompt.trim()) errors.prompt = 'Décris la mission du pix avant de le lancer.';
     else if (prompt.length > MAX_PROMPT) errors.prompt = 'La mission est trop longue (' + fmtInt(MAX_PROMPT) + ' caractères maximum, actuellement ' + fmtInt(prompt.length) + ').';
     const nameErr = validateName(name);
     if (nameErr) errors.name = nameErr;
@@ -1480,7 +1487,7 @@
   function setLaunching(on) {
     launching = on;
     setAttr(els.submit, 'aria-busy', on ? 'true' : null);
-    setText(els.submitLabel, on ? 'Lancement…' : 'Lancer l\'agent');
+    setText(els.submitLabel, on ? 'Lancement…' : 'Lancer le pix');
     if (on) setAttr(els.submit, 'aria-disabled', 'true');
     else updateLaunchAvailability();
   }
@@ -1528,7 +1535,7 @@
     if (els.name.placeholder !== next) els.name.placeholder = next;
   }
 
-  // ------------------------------------------------------------------ game windows (Nouvel agent, Terminal, Bibliothèque, Succès)
+  // ------------------------------------------------------------------ game windows (Nouveau pix, Terminal, Bibliothèque, Succès)
   // Draggable by the title bar, closable, brought to the front on focus, positions remembered.
   // Below 900 px they turn into bottom sheets (CSS) and only one is open at a time.
 
@@ -2396,7 +2403,7 @@
       const count = h('span', { class: 'num lib-type-count', 'data-type-count': T.type }, typeCount(items, T.type));
       const section = h('section', { class: 'lib-type' }, [h('h4', { class: 'lib-type-title' }, [T.label + ' ', count])]);
       if (T.type === 'agent') {
-        section.append(h('p', { class: 'lib-type-hint' }, 'Choisis un agent dans « Profil » (Nouvel agent ou Terminal) pour lancer Claude Code avec lui.'));
+        section.append(h('p', { class: 'lib-type-hint' }, 'Choisis un agent dans « Profil » (Nouveau pix ou Terminal) pour lancer Claude Code avec lui.'));
       }
       const groups = new Map();
       for (const it of shown) {
@@ -2451,9 +2458,9 @@
     if (rec.switchInput.checked !== enabled) rec.switchInput.checked = enabled;
     rec.switchInput.disabled = busy;
     setText(rec.switchText, enabled ? 'Actif' : 'Désactivé');
-    setAttr(rec.switchInput, 'aria-label', 'Utiliser ' + name + ' dans tes agents');
+    setAttr(rec.switchInput, 'aria-label', 'Utiliser ' + name + ' dans tes pix');
     setAttr(rec.sw, 'title', busy ? 'Patiente : une opération est en cours sur ce dépôt'
-      : enabled ? 'Ce dépôt est proposé à tes agents : clique pour le désactiver' : 'Ce dépôt est ignoré : clique pour le réactiver');
+      : enabled ? 'Ce dépôt est proposé à tes pix : clique pour le désactiver' : 'Ce dépôt est ignoré : clique pour le réactiver');
 
     const counts = libCountsText(r);
     setText(rec.counts, counts || (status === 'cloning' ? 'Récupération du dépôt…' : status === 'ready' ? 'Aucun skill, agent ni commande trouvé' : ''));
@@ -2572,7 +2579,7 @@
     els.tProfile.addEventListener('change', onProfile(els.tProfile, STORE_KEYS.termProfile));
   }
 
-  // ------------------------------------------------------------------ « équipe » party bar (RTS style)
+  // ------------------------------------------------------------------ « Tes pix » party bar (RTS style)
 
   function rank(a) {
     if (isRunning(a)) return 0;
@@ -2683,7 +2690,7 @@
     const pressed = selectedId === a.id ? 'true' : 'false';
     setAttr(rec.main, 'aria-pressed', pressed);
     setAttr(rec.main, 'aria-label', name + ', niveau ' + lv.level + ' ' + lv.title + ', ' + label + ' : ' + act
-      + ', ' + fmtTokens(tk.total) + ' tokens' + (subs.length ? ', ' + subs.length + ' sous-agent' + (subs.length > 1 ? 's' : '') : ''));
+      + ', ' + fmtTokens(tk.total) + ' tokens' + (subs.length ? ', ' + subs.length + ' sous-pix' : ''));
     setAttr(rec.main, 'title', name + ' · Niv. ' + lv.level + ' ' + lv.title + ' · ' + label + '\n' + act);
 
     paintMemberAvatar(rec, a);
@@ -2712,7 +2719,7 @@
         type: 'button',
         class: 'member-sub' + (s.id === selectedId ? ' is-selected' : '') + (isEnded(s) ? ' is-ended' : ''),
         title: (str(s.name) || s.id) + (s.role ? ' · ' + str(s.role) : '') + ' : ' + activityText(s),
-        'aria-label': 'Sous-agent ' + (str(s.name) || s.id) + ', ' + statusLabel(s)
+        'aria-label': 'Sous-pix ' + (str(s.name) || s.id) + ', ' + statusLabel(s)
       }, [c]);
       b.style.setProperty('--agent', safeColor(s.color));
       b.dataset.status = knownStatus(s);
@@ -2722,7 +2729,7 @@
       return b;
     });
     if (subs.length > MAX) {
-      nodes.push(h('span', { class: 'member-sub-more num', title: subs.length + ' sous-agents' }, '+' + (subs.length - MAX)));
+      nodes.push(h('span', { class: 'member-sub-more num', title: subs.length + ' sous-pix' }, '+' + (subs.length - MAX)));
     }
     rec.subs.replaceChildren(...nodes);
     setHidden(rec.subs, !subs.length);
@@ -2759,7 +2766,7 @@
 
     const count = all.length;
     setText(els.rosterCount, fmtInt(count));
-    setAttr(els.rosterCount, 'title', count > 1 ? count + ' agents au bureau' : count + ' agent au bureau');
+    setAttr(els.rosterCount, 'title', count + ' pix au bureau');
     setHidden(els.partyEmpty, count > 0);
     setHidden(els.partyList, count === 0);
     setHidden(els.stageEmpty, count > 0);
@@ -3061,8 +3068,8 @@
 
     setHidden(els.dStop, !canStop(a));
     setAttr(els.dStop, 'title', isSub
-      ? 'Arrêter ce sous-agent arrête aussi son agent parent.'
-      : interactive ? 'Arrêter cette session Claude Code (le terminal reste ouvert)' : 'Arrêter le processus de l\'agent');
+      ? 'Arrêter ce sous-pix arrête aussi son pix parent.'
+      : interactive ? 'Arrêter cette session Claude Code (le terminal reste ouvert)' : 'Arrêter le processus du pix');
 
     // « Voir son terminal »: agents started in an HQ terminal (subagents follow their root).
     const root = isSub && a.parentId ? agentById(a.parentId) : a;
@@ -3092,9 +3099,9 @@
       else if (ended) note = 'Session terminée.';
       else if (a.status === 'starting') note = 'Claude Code démarre dans son terminal… Réponds-lui directement dans son terminal.';
       else note = 'Réponds-lui directement dans son terminal.';
-    } else if (isSub && running) note = 'Arrêter un sous-agent arrête aussi son agent parent.';
-    else if (isSub && ended) note = 'Sous-agent : pour poursuivre, écris à son agent parent.';
-    else if (ended && !a.sessionId) note = 'Aucune session à reprendre : impossible d\'envoyer une suite à cet agent.';
+    } else if (isSub && running) note = 'Arrêter un sous-pix arrête aussi son pix parent.';
+    else if (isSub && ended) note = 'Sous-pix : pour poursuivre, écris à son pix parent.';
+    else if (ended && !a.sessionId) note = 'Aucune session à reprendre : impossible d\'envoyer une suite à ce pix.';
     else if (a.status === 'starting') note = 'Démarrage du processus Claude Code…';
     setText(els.dNote, note);
     setHidden(els.dNote, !note);
@@ -3179,7 +3186,7 @@
     setAttr(els.dName, 'title', name);
 
     const chips = [];
-    if (a.kind === 'sub') chips.push(['Sous-agent' + (a.role ? ' · ' + str(a.role) : ''), 'chip--role', 'Type de sous-agent']);
+    if (a.kind === 'sub') chips.push(['Sous-pix' + (a.role ? ' · ' + str(a.role) : ''), 'chip--role', 'Type de sous-pix']);
     if (a.model) chips.push([shortModel(a.model), '', 'Modèle : ' + str(a.model)]);
     if (profileShort(a.profile)) chips.push([profileShort(a.profile), 'chip--profile', 'Profil de la bibliothèque : ' + str(a.profile)]);
     if (SOURCE_LABEL[a.source]) chips.push([SOURCE_LABEL[a.source], 'chip--src-' + a.source, sourceTitle(a)]);
@@ -3202,7 +3209,7 @@
     const costInteractive = a.interactive === true && !hasCost(a);
     setText(els.dCost, costInParent ? 'inclus' : fmtCost(a.costUsd));
     setAttr(els.dCost, 'title', costInParent
-      ? 'Inclus dans le coût de l\'agent parent'
+      ? 'Inclus dans le coût du pix parent'
       : costInteractive ? 'Coût indisponible : les sessions interactives ne le communiquent pas' : null);
     setText(els.dTools, fmtInt(a.toolCount));
     setText(els.dTurns, fmtInt(a.turns));
@@ -3511,8 +3518,8 @@
 
   const STAT_LABELS = [
     ['totalTokens', 'Tokens cumulés', true],
-    ['agentsLaunched', 'Agents lancés'],
-    ['maxConcurrent', 'Record d\'agents simultanés'],
+    ['agentsLaunched', 'Pix lancés'],
+    ['maxConcurrent', 'Record de pix simultanés'],
     ['toolsUsed', 'Outils utilisés'],
     ['reads', 'Lectures'],
     ['searches', 'Recherches'],
@@ -3523,7 +3530,7 @@
     ['gits', 'Opérations Git'],
     ['webs', 'Visites web'],
     ['tasks', 'Délégations'],
-    ['subagents', 'Sous-agents'],
+    ['subagents', 'Sous-pix'],
     ['done', 'Missions terminées'],
     ['errors', 'Erreurs'],
     ['terminalSessions', 'Terminaux ouverts'],
@@ -3652,7 +3659,7 @@
       kind: 'level',
       iconNode: icon('star'),
       label: 'Niveau ' + lvl + ' !',
-      title: (str(i.name) || 'Un agent') + ' devient ' + title,
+      title: (str(i.name) || 'Un pix') + ' devient ' + title,
       color: i.color
     });
   }
@@ -3731,7 +3738,7 @@
   }
 
   function drawEmptyAvatar() {
-    drawAvatar(els.emptyAvatar, '#D97757', { size: 48, status: 'waiting', frame: 0 });
+    drawAvatar(els.emptyAvatar, '#FF8A5B', { size: 48, status: 'waiting', frame: 0 });
   }
 
   // ------------------------------------------------------------------ init

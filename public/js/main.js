@@ -8,8 +8,6 @@
  * statistics (docs/GAME2.md §2) and unlocks the achievements of window.HQProgression.
  * Every HQGame / HQTerminal / HQProgression call is guarded: the page keeps working if the office,
  * the terminal or the progression module fails.
- * The office only boots once window.HQLicense (js/license.js) says the app is licensed; a 402
- * « license_required » answer or a lost stream sends the page back to the login window.
  */
 (function () {
   'use strict';
@@ -39,6 +37,8 @@
   const terminals = new Map();    // id → Terminal (integrated terminals, docs/TERMINAL.md)
   const logCache = new Map();     // id → LogEntry[] (last LOG_CAP, fed by SSE and by GET …/logs)
   let config = null;
+  let configWarningsSig = '';     // config.warnings already shown as banners
+  let configWarningKeys = [];
   let termSupport = { supported: false, ready: false, reason: '' };
   let terminalsFetch = 0;         // increments per GET /api/terminals, to drop stale responses
   let selectedId = null;
@@ -50,8 +50,6 @@
   let logRequest = 0;             // increments per logs fetch, to drop stale responses
   let statsQueued = false;
   let inGameSelect = false;       // guards HQGame.select → onSelect re-entrancy
-  let booted = false;             // boot() ran (after the first licence unlock)
-  let licenseLocked = false;      // login window shown: no stream, no reconnect
 
   // ------------------------------------------------------------------ helpers
 
@@ -74,7 +72,7 @@
 
   function nameOf(id) {
     const a = store.get(id);
-    return a && a.name ? String(a.name) : 'l\'agent';
+    return a && a.name ? String(a.name) : 'ce pix';
   }
 
   function truncate(s, max) {
@@ -129,18 +127,6 @@
     return !!t && typeof t === 'object' && typeof t.id === 'string' && t.id.length > 0;
   }
 
-  /** Calls window.HQLicense[method] if it exists; never throws. */
-  function licenseCall(method, ...args) {
-    const lic = window.HQLicense;
-    if (!lic || typeof lic[method] !== 'function') return undefined;
-    try {
-      return lic[method](...args);
-    } catch (err) {
-      console.error('[PixelQG] HQLicense.' + method + ' a échoué.', err);
-      return undefined;
-    }
-  }
-
   function terminalTitle(id) {
     const t = id ? terminals.get(id) : null;
     return t && t.title ? String(t.title) : 'son terminal';
@@ -162,8 +148,8 @@
       case 400: return 'Requête invalide.';
       case 401: return 'Accès refusé : recharge la page (le serveur a peut-être redémarré).';
       case 403: return 'Requête refusée par le serveur.';
-      case 404: return 'Introuvable : cet agent n\'existe plus.';
-      case 409: return 'Action impossible pour l\'instant : l\'agent est occupé.';
+      case 404: return 'Introuvable : ce pix n\'existe plus.';
+      case 409: return 'Action impossible pour l\'instant : le pix est occupé.';
       case 413: return 'Contenu trop volumineux (1 Mo maximum).';
       case 415: return 'Format de requête non accepté.';
       case 501: return 'Fonction indisponible sur ce serveur PixelQG.';
@@ -204,7 +190,6 @@
       clearTimeout(timer);
     }
     if (res.status === 401) markSessionDead();
-    if (res.status === 402 && data && data.code === 'license_required') licenseCall('check');
     if (!res.ok || !data || data.ok !== true) {
       const msg = data && typeof data.error === 'string' && data.error.trim() ? data.error.trim() : statusMessage(res.status);
       throw new ApiError(msg, res.status);
@@ -352,7 +337,7 @@
       return;
     }
     if (next.source !== 'spawned') return;
-    const name = next.name ? String(next.name) : 'L\'agent';
+    const name = next.name ? String(next.name) : 'Le pix';
     if (next.status === 'done' && RUNNING.has(prev.status)) {
       ui.toast(name + ' a terminé sa mission.', 'ok');
     } else if (next.status === 'error' && prev.status !== 'error') {
@@ -475,7 +460,6 @@
     if (!cfg || typeof cfg !== 'object') return;
     config = cfg;
     ui.setConfig(cfg);
-    if (cfg.license && typeof cfg.license === 'object') licenseCall('update', cfg.license);
     const support = termCall('setConfig', cfg);
     termSupport = support && typeof support === 'object'
       ? support
@@ -485,12 +469,28 @@
       ui.showBanner('claude', {
         kind: 'warn',
         title: 'Claude Code introuvable.',
-        text: 'Impossible de lancer de vrais agents : installe Claude Code (npm install -g @anthropic-ai/claude-code) '
+        text: 'Impossible de lancer de vrais pix : installe Claude Code (npm install -g @anthropic-ai/claude-code) '
           + 'ou indique son chemin dans la variable d\'environnement CLAUDE_BIN, puis relance PixelQG.'
       });
     } else {
       ui.hideBanner('claude');
     }
+    showConfigWarnings(cfg.warnings);
+  }
+
+  // Server warnings (config.warnings: untested Claude Code version, CLAUDE_BIN, library…), one
+  // banner each. Shown again only when the list changes, so « Masquer » sticks for this page.
+  function showConfigWarnings(list) {
+    const warns = Array.isArray(list) ? list.filter((w) => typeof w === 'string' && w.trim()).slice(0, 5) : [];
+    const sig = warns.join('\n');
+    if (sig === configWarningsSig) return;
+    configWarningsSig = sig;
+    for (const key of configWarningKeys) ui.hideBanner(key);
+    configWarningKeys = warns.map((text, i) => {
+      const key = 'config-warning-' + i;
+      ui.showBanner(key, { kind: 'warn', text });
+      return key;
+    });
   }
 
   async function loadConfig() {
@@ -511,9 +511,9 @@
     if (validAgent(agent)) {
       upsertLocal(agent, { quiet: true });
       select(agent.id, 'launch');
-      ui.toast('Agent ' + (agent.name || agent.id) + ' lancé.', 'ok');
+      ui.toast('Pix ' + (agent.name || agent.id) + ' lancé.', 'ok');
     } else {
-      ui.toast('Agent lancé.', 'ok');
+      ui.toast('Pix lancé.', 'ok');
     }
     return agent;
   }
@@ -1004,23 +1004,18 @@
     });
   }
 
-  /** After a stream failure, tell "server down" apart from "token rejected" and "licence lost". */
+  /** After a stream failure, tell "server down" apart from "token rejected". */
   async function probeSession() {
     try {
-      const res = await fetch('/api/license', { headers: { 'X-HQ-Token': TOKEN }, cache: 'no-store' });
-      if (res.status === 401) {
-        markSessionDead();
-        return;
-      }
-      const data = res.ok ? await res.json().catch(() => null) : null;
-      if (data && data.license && data.license.licensed === false) licenseCall('update', data.license);
+      const res = await fetch('/api/config', { headers: { 'X-HQ-Token': TOKEN }, cache: 'no-store' });
+      if (res.status === 401) markSessionDead();
     } catch (_) {
       /* server unreachable: keep retrying with backoff */
     }
   }
 
   function connect() {
-    if (!TOKEN_OK || sessionDead || licenseLocked) return;
+    if (!TOKEN_OK || sessionDead) return;
     clearTimeout(reconnectTimer);
     reconnectTimer = 0;
     if (source) {
@@ -1090,11 +1085,6 @@
       const data = parseEvent(ev);
       if (data && typeof data.id === 'string') removeTerminal(data.id);
     });
-    es.addEventListener('license', (ev) => {
-      if (!live()) return;
-      const data = parseEvent(ev);
-      if (data && typeof data === 'object') licenseCall('update', data);
-    });
     es.addEventListener('error', () => {
       if (!live()) return;
       es.close();
@@ -1105,7 +1095,7 @@
   }
 
   function scheduleReconnect() {
-    if (sessionDead || licenseLocked) return;
+    if (sessionDead) return;
     clearTimeout(reconnectTimer);
     attempt += 1;
     const delay = Math.min(BACKOFF_MAX, BACKOFF_BASE * Math.pow(2, Math.min(attempt - 1, 5))) + Math.floor(Math.random() * 400);
@@ -1114,7 +1104,7 @@
   }
 
   function reconnectNow() {
-    if (!TOKEN_OK || sessionDead || licenseLocked) return;
+    if (!TOKEN_OK || sessionDead) return;
     termCall('reconnectNow');
     if (source) return;
     attempt = 0;
@@ -1261,43 +1251,5 @@
     connect();
   }
 
-  /** Licence first (login window while not licensed), then the office. */
-  function start() {
-    const gate = window.HQLicense;
-    if (!TOKEN_OK || !gate || typeof gate.init !== 'function') {
-      if (TOKEN_OK && !gate) console.warn('[PixelQG] Le module de licence (HQLicense) n\'est pas chargé.');
-      booted = true;
-      boot();
-      return;
-    }
-    gate.init({
-      token: TOKEN,
-      onUnlocked: (_state, info) => {
-        licenseLocked = false;
-        if (!booted) {
-          booted = true;
-          boot();
-        } else {
-          // Back from the login window: fresh config and snapshot, terminals reconnect.
-          loadConfig();
-          attempt = 0;
-          connect();
-          termCall('reconnectNow');
-        }
-        if (info && info.fresh) ui.toast('Licence activée sur ce PC : bon travail au bureau !', 'ok');
-      },
-      onLocked: () => {
-        licenseLocked = true;
-        clearTimeout(reconnectTimer);
-        reconnectTimer = 0;
-        if (source) {
-          source.close();
-          source = null;
-        }
-        if (booted) ui.setConnection('offline');
-      }
-    });
-  }
-
-  start();
+  boot();
 })();

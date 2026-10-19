@@ -19,7 +19,6 @@ const { SessionWatcher } = require('./watcher');
 const { TerminalManager } = require('./terminals');
 const { Library } = require('./library');
 const { acceptUpgrade, rejectUpgrade } = require('./ws');
-const { LicenseManager, LicenseError } = require('./license');
 const names = require('./names');
 
 const VERSION = '1.0.0';
@@ -37,8 +36,16 @@ const UNLINK_FLUSH_MS = 1500;
 const TERMINAL_ID_RE = /^t\d{1,9}$/;
 const LIBRARY_ID_RE = /^[A-Za-z0-9._-]{1,120}$/;
 const TOKEN_PLACEHOLDER = /__HQ_TOKEN__/g;
-const LICENSE_WAIT_MS = 10000;
-const LICENSE_REQUIRED = Object.freeze({ ok: false, error: 'Licence requise', code: 'license_required' });
+// Claude Code releases PixelQG was tested with (major.minor). Others only get a warning.
+const TESTED_CLAUDE = Object.freeze(['2.1']);
+const UNTESTED_CLAUDE_MSG = 'Version de Claude Code non testée avec PixelQG : certaines activités peuvent mal s\'afficher.';
+
+/** The compatibility warning for a `claude --version` line, or null (tested or unknown version). */
+function claudeVersionWarning(versionLine) {
+  const m = /(\d+)\.(\d+)/.exec(String(versionLine || ''));
+  if (!m) return null;
+  return TESTED_CLAUDE.includes(`${Number(m[1])}.${Number(m[2])}`) ? null : UNTESTED_CLAUDE_MSG;
+}
 
 const EFFORT_OPTIONS = Object.freeze([
   { value: '', label: 'Par défaut' },
@@ -296,8 +303,6 @@ function listenOn(server, port, host) {
  * @param {object} [opts.terminals] TerminalManager options (integrated terminal)
  * @param {object} [opts.library] Library options (home, gitBin, validate…); home defaults to
  *   env PIXELQG_HOME or ~/.pixelqg
- * @param {object} [opts.license] LicenseManager options; `{ bypass: true }` opens the gate for
- *   the test-suite (there is deliberately no env var or CLI flag for it)
  */
 async function startServer(opts = {}) {
   const token = opts.token || crypto.randomBytes(24).toString('hex');
@@ -311,13 +316,6 @@ async function startServer(opts = {}) {
     },
   });
   const claude = opts.claude !== undefined ? opts.claude : resolver();
-
-  // Account licence (pixelqg-site/docs/ACCOUNTS.md §2): loads the local certificate (no network);
-  // the online renewal starts once the server listens.
-  const license = new LicenseManager(opts.license || {});
-  const licenseReady = license.init().catch((err) => {
-    console.error('[licence]', err && err.stack ? err.stack : err);
-  });
 
   // Skills & agents library (docs/LIBRARY.md). Initialised in the background: the HTTP server
   // does not wait for git detection or wrapper rebuilds.
@@ -362,13 +360,16 @@ async function startServer(opts = {}) {
       platform: process.platform,
       terminal: terminals.config(),
       library: { gitFound: library.gitFound, pluginDir: library.pluginDir },
-      license: license.state(),
+      warnings: currentWarnings(),
     };
   }
 
-  /** The only configuration a page without licence gets (no paths, no agent data). */
-  function buildLockedConfig() {
-    return { version: VERSION, port: state.port, platform: process.platform, license: license.state() };
+  /** Startup warnings, plus the Claude Code compatibility one (the page shows each as a banner). */
+  function currentWarnings() {
+    const list = warnings.slice();
+    const compat = manager.claude ? claudeVersionWarning(state.claudeVersion) : null;
+    if (compat && !list.includes(compat)) list.push(compat);
+    return list;
   }
 
   function tokenOk(given) {
@@ -437,23 +438,6 @@ async function startServer(opts = {}) {
     getVersion(resolved).then((v) => {
       state.claudeVersion = v;
     });
-  });
-  license.on('change', (st) => {
-    if (st.licensed) {
-      broadcast('license', st);
-      return;
-    }
-    // Logout, revoked licence or expired certificate: close the live streams. The page notices,
-    // asks GET /api/license and shows its login window; running agents are left alone.
-    for (const client of clients) {
-      try {
-        client.res.end();
-      } catch {
-        /* already gone */
-      }
-    }
-    clients.clear();
-    for (const set of sockets.values()) for (const ws of set) ws.close(4402, 'Licence requise');
   });
 
   // ---------------------------------------------------------------- terminals (SSE + sockets)
@@ -537,7 +521,6 @@ async function startServer(opts = {}) {
     if (!tokenOk(url.searchParams.get('token')) && !tokenOk(req.headers['x-hq-token'])) {
       return rejectUpgrade(socket, 401, "Jeton d'accès manquant ou invalide. Recharge la page de PixelQG.");
     }
-    if (!license.isLicensed()) return rejectUpgrade(socket, 402, 'Licence requise : connecte-toi à ton compte PixelQG.');
     if (!terminals.supported) return rejectUpgrade(socket, 501, terminals.reason || 'Le terminal intégré est indisponible.');
     let id;
     try {
@@ -589,44 +572,6 @@ async function startServer(opts = {}) {
     }
   }
 
-  /** GET /api/license, POST /api/license/login | logout | refresh (open without a licence). */
-  async function handleLicense(req, res, pathname) {
-    const method = req.method;
-    const notAllowed = (allow) => sendError(res, 405, 'Méthode non autorisée.', { Allow: allow });
-    const sub = pathname === '/api/license' ? '' : pathname.slice('/api/license/'.length);
-    try {
-      if (sub === '') {
-        if (method !== 'GET') return notAllowed('GET');
-        // At startup an expired certificate may be renewing right now: wait for that first.
-        if (!license.isLicensed()) await license.whenIdle(LICENSE_WAIT_MS);
-        return sendJson(res, 200, { ok: true, license: license.state() });
-      }
-      if (sub === 'login') {
-        if (method !== 'POST') return notAllowed('POST');
-        const body = await readJsonBody(req);
-        const b = body && typeof body === 'object' && !Array.isArray(body) ? body : {};
-        const st = await license.login(b.email, b.password);
-        return sendJson(res, 200, { ok: true, license: st });
-      }
-      if (sub === 'logout') {
-        if (method !== 'POST') return notAllowed('POST');
-        await readJsonBody(req);
-        const out = await license.logout();
-        return sendJson(res, 200, { ok: true, released: out.released, message: out.message, license: out.license });
-      }
-      if (sub === 'refresh') {
-        if (method !== 'POST') return notAllowed('POST');
-        await readJsonBody(req);
-        const st = await license.refresh();
-        return sendJson(res, 200, { ok: true, license: st });
-      }
-    } catch (err) {
-      if (!(err instanceof LicenseError)) throw err;
-      return sendJson(res, err.status, { ok: false, error: err.message, code: err.code, license: license.state() });
-    }
-    throw new HqError(404, 'Route inconnue.');
-  }
-
   async function handleApi(req, res, url) {
     const pathname = url.pathname;
     let authorized = tokenOk(req.headers['x-hq-token']);
@@ -645,14 +590,6 @@ async function startServer(opts = {}) {
 
     const method = req.method;
     const notAllowed = (allow) => sendError(res, 405, 'Méthode non autorisée.', { Allow: allow });
-
-    // Licence gate: only /api/license/* and a minimal /api/config answer without a valid certificate.
-    if (pathname === '/api/license' || pathname.startsWith('/api/license/')) return handleLicense(req, res, pathname);
-    if (!license.isLicensed()) {
-      if (pathname === '/api/config' && method === 'GET') return sendJson(res, 200, { ok: true, config: buildLockedConfig() });
-      req.resume();
-      return sendJson(res, 402, LICENSE_REQUIRED);
-    }
 
     if (pathname === '/api/events') {
       if (method !== 'GET') return notAllowed('GET');
@@ -780,12 +717,12 @@ async function startServer(opts = {}) {
       } catch {
         id = '';
       }
-      if (!/^[A-Za-z0-9._-]{1,80}$/.test(id)) throw new HqError(404, 'Agent introuvable.');
+      if (!/^[A-Za-z0-9._-]{1,80}$/.test(id)) throw new HqError(404, 'Pix introuvable.');
       const action = m[2] || null;
       if (action === 'logs') {
         if (method !== 'GET') return notAllowed('GET');
         const logs = manager.getLogs(id);
-        if (!logs) throw new HqError(404, 'Agent introuvable.');
+        if (!logs) throw new HqError(404, 'Pix introuvable.');
         return sendJson(res, 200, { ok: true, logs });
       }
       if (action === 'message') {
@@ -802,7 +739,7 @@ async function startServer(opts = {}) {
       }
       if (method === 'GET') {
         const agent = manager.get(id);
-        if (!agent) throw new HqError(404, 'Agent introuvable.');
+        if (!agent) throw new HqError(404, 'Pix introuvable.');
         return sendJson(res, 200, { ok: true, agent });
       }
       if (method === 'DELETE') {
@@ -929,8 +866,6 @@ async function startServer(opts = {}) {
     }
   });
 
-  await licenseReady;
-
   // Port selection: the requested port, then up to 10 following ports if busy.
   const firstPort = opts.port === undefined || opts.port === null ? DEFAULT_PORT : Number(opts.port);
   const tries = firstPort === 0 ? 1 : PORT_TRIES + 1;
@@ -949,7 +884,6 @@ async function startServer(opts = {}) {
   }
   if (port === null) {
     watcher.dispose();
-    license.close();
     await libraryReady;
     await library.close();
     await terminalsReady;
@@ -972,14 +906,12 @@ async function startServer(opts = {}) {
 
   if (!opts.skipVersion && manager.claude) state.claudeVersion = await getVersion(manager.claude);
   if (opts.observe !== false) watcher.start();
-  license.startAutoRefresh();
 
   let closing = null;
   async function close() {
     if (closing) return closing;
     closing = (async () => {
       watcher.dispose();
-      license.close();
       clearInterval(pingTimer);
       for (const st of throttle.values()) if (st.timer) clearTimeout(st.timer);
       throttle.clear();
@@ -1014,7 +946,6 @@ async function startServer(opts = {}) {
     terminals,
     library,
     libraryReady,
-    license,
     warnings,
     config: buildConfig,
     close,
@@ -1041,13 +972,9 @@ function printBanner(app, args) {
       ? '  •  Terminal intégré : prêt (tape « claude » dedans, la session apparaît dans le bureau)'
       : `  •  Terminal intégré : indisponible (${cfg.terminal.reason})`,
   ];
-  const lic = cfg.license;
-  if (lic.devMode) lines.push('  •  Licence : mode développeur (comptes non configurés dans cloud-config.js)');
-  else if (lic.licensed) lines.push(`  ✓  Licence : active sur ce PC${lic.offline ? ' (hors ligne)' : ''}`);
-  else lines.push('  ⚠  Licence : ouvre l’adresse ci-dessus et connecte-toi à ton compte PixelQG');
   if (app.port !== (args.port || DEFAULT_PORT)) lines.push(`  ℹ  Le port demandé était occupé : utilisation du port ${app.port}.`);
-  for (const w of app.warnings) lines.push(`  ⚠  ${w}`);
-  lines.push('', '  Appuie sur Ctrl+C pour tout arrêter (les agents en cours seront stoppés).', '');
+  for (const w of cfg.warnings) lines.push(`  ⚠  ${w}`);
+  lines.push('', '  Appuie sur Ctrl+C pour tout arrêter (les pix en cours seront stoppés).', '');
   console.log(lines.join('\n'));
 }
 
@@ -1067,7 +994,7 @@ async function main() {
   if (args.help) {
     console.log([
       '',
-      '  PixelQG — ton bureau d’agents Claude Code',
+      '  PixelQG — ton bureau de pix (agents Claude Code)',
       '',
       '  node server/server.js [options]',
       '    --port N       port d’écoute (défaut 4317, ou variable HQ_PORT)',
@@ -1104,7 +1031,7 @@ async function main() {
       return;
     }
     stopping = true;
-    console.log('\n  Arrêt de PixelQG… les agents en cours sont stoppés.');
+    console.log('\n  Arrêt de PixelQG… les pix en cours sont stoppés.');
     const force = setTimeout(() => process.exit(0), 8000);
     force.unref();
     try {
@@ -1138,4 +1065,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { startServer, parseArgs, openBrowser, VERSION, DEFAULT_PORT };
+module.exports = { startServer, parseArgs, openBrowser, claudeVersionWarning, VERSION, DEFAULT_PORT };

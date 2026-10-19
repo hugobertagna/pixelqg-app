@@ -157,7 +157,7 @@
   }
 
   function withAlpha(hex, a) {
-    const c = HEX_RE.test(hex) ? hex : '#D97757';
+    const c = HEX_RE.test(hex) ? hex : '#FF8A5B';
     const n = parseInt(c.slice(1), 16);
     return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
   }
@@ -253,7 +253,7 @@
   function buildTheme() {
     if (theme) return theme;
     const ink = cssVar('--ink', '#14151f');
-    const accent = cssVar('--accent', '#D97757');
+    const accent = cssVar('--accent', '#FFC84A');
     theme = {
       background: ink,
       foreground: cssVar('--text', '#ece8f4'),
@@ -915,7 +915,7 @@
     const name = str(t.title) || 'ce terminal';
     const alive = linkedAgents(t).filter((a) => ALIVE.has(a.status));
     let q = 'Fermer « ' + name + ' » ? Le shell sera arrêté';
-    if (alive.length === 1) q += ', ainsi que la session Claude Code ' + ofName(str(alive[0].name) || 'ton agent');
+    if (alive.length === 1) q += ', ainsi que la session Claude Code ' + ofName(str(alive[0].name) || 'ton pix');
     else if (alive.length > 1) q += ', ainsi que ses ' + alive.length + ' sessions Claude Code';
     setText(els.confirmQ, q + '.');
     setHidden(els.confirm, false);

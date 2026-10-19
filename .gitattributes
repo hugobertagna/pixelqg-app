@@ -5,3 +5,6 @@
 *.ico binary
 *.png binary
 *.ttf binary
+*.command text eol=lf
+server/shim/claude text eol=lf
+server/shim/posix/** text eol=lf

@@ -46,7 +46,6 @@ test('end-to-end with the fake Claude Code CLI', async (t) => {
   process.env.FAKE_CLAUDE_LOG = logFile;
 
   const app = await startServer({
-    license: { bypass: true },
     port: 0,
     observe: false,
     publicDir: makePublicDir(),
@@ -87,7 +86,7 @@ test('end-to-end with the fake Claude Code CLI', async (t) => {
     assert.equal(agent.id, 'a1');
     assert.equal(agent.status, 'starting');
     assert.equal(agent.name, 'Nova');
-    assert.equal(agent.color, '#D97757');
+    assert.equal(agent.color, '#FF8A5B');
     assert.equal(agent.model, 'haiku');
     assert.equal(agent.source, 'spawned');
     assert.equal(agent.canControl, true);
@@ -220,7 +219,6 @@ test('closing the server kills running Claude Code processes', async () => {
   const saved = { CLAUDE_BIN: process.env.CLAUDE_BIN, HQ_FAKE_CLAUDE: process.env.HQ_FAKE_CLAUDE };
   process.env.HQ_FAKE_CLAUDE = '1';
   const app = await startServer({
-    license: { bypass: true },
     port: 0,
     observe: false,
     publicDir: makePublicDir(),

@@ -1,0 +1,9 @@
+#!/bin/sh
+# `claude` in a PixelQG terminal (macOS / Linux, see docs/TERMINAL.md section 3): server/shim is
+# first in the PATH of these terminals, so this runs the PixelQG relay (server/claude-shim.js),
+# which links the session to the office and then starts the real Claude Code.
+if [ -n "$PIXELQG_NODE" ] && [ -n "$PIXELQG_SHIM" ]; then
+  exec "$PIXELQG_NODE" "$PIXELQG_SHIM" "$@"
+fi
+# Outside PixelQG: the relay simply runs the real claude found in PATH.
+exec node "$(dirname "$0")/../claude-shim.js" "$@"

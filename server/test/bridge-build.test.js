@@ -54,20 +54,19 @@ test('bridge: compiled when missing, recompiled when older than its source, old 
 
 test('terminal unavailable: config says why, routes answer 501', async (t) => {
   const app = await startServer({
-    license: { bypass: true },
     port: 0,
     observe: false,
     publicDir: makePublicDir(),
     claude: null,
     skipVersion: true,
     watcher: { projectsDir: tmpDir('pixelqg-app-projects-'), autoPoll: false },
-    terminals: { platform: 'linux' },
+    terminals: { platform: 'aix' }, // macOS and Linux have an (experimental) terminal now
   });
   t.after(() => app.close());
   const auth = { 'X-HQ-Token': app.token };
   const cfg = (await request(app.port, { path: '/api/config', headers: auth })).json.config;
   assert.equal(cfg.terminal.supported, false);
-  assert.equal(cfg.terminal.shell, 'cmd.exe');
+  assert.equal(typeof cfg.terminal.shell, 'string');
   assert.match(cfg.terminal.reason, /Windows/);
   assert.deepEqual((await request(app.port, { path: '/api/terminals', headers: auth })).json, { ok: true, terminals: [] });
   const create = await request(app.port, { method: 'POST', path: '/api/terminals', headers: auth, body: {} });

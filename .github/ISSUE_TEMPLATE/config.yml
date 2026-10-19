@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Partager des skills ou des agents
+    url: https://github.com/hugobertagna/pixelqg-app/discussions
+    about: Poste le lien de ton dépôt GitHub de skills dans les Discussions.
+  - name: Poser une question
+    url: https://github.com/hugobertagna/pixelqg-app/discussions
+    about: Les questions et l’entraide se passent dans les Discussions.

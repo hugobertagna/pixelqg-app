@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#14151f">
-  <meta name="description" content="PixelQG : lance tes agents Claude Code et regarde-les travailler dans un bureau en pixel art.">
+  <meta name="description" content="PixelQG : lance tes pix (agents Claude Code) et regarde-les travailler dans un bureau en pixel art.">
   <title>PixelQG</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect x='2' y='4' width='12' height='7' fill='%23D97757'/%3E%3Crect x='2' y='4' width='12' height='1' fill='%23F0A37F'/%3E%3Crect x='2' y='10' width='12' height='1' fill='%23B65F42'/%3E%3Crect x='0' y='6' width='2' height='2' fill='%23D97757'/%3E%3Crect x='14' y='6' width='2' height='2' fill='%23B65F42'/%3E%3Crect x='5' y='6' width='1' height='2' fill='%231A1012'/%3E%3Crect x='10' y='6' width='1' height='2' fill='%231A1012'/%3E%3Crect x='3' y='11' width='1' height='2' fill='%23B65F42'/%3E%3Crect x='5' y='11' width='1' height='2' fill='%23B65F42'/%3E%3Crect x='10' y='11' width='1' height='2' fill='%23B65F42'/%3E%3Crect x='12' y='11' width='1' height='2' fill='%23B65F42'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect x='7' y='0' width='2' height='1' fill='%23FFC84A'/%3E%3Crect x='8' y='1' width='1' height='1' fill='%238790B0'/%3E%3Crect x='4' y='2' width='8' height='1' fill='%230A0B16'/%3E%3Crect x='3' y='3' width='1' height='6' fill='%230A0B16'/%3E%3Crect x='4' y='3' width='1' height='5' fill='%234FE3D3'/%3E%3Crect x='5' y='3' width='2' height='1' fill='%239EF0E7'/%3E%3Crect x='7' y='3' width='5' height='1' fill='%234FE3D3'/%3E%3Crect x='12' y='3' width='1' height='6' fill='%230A0B16'/%3E%3Crect x='5' y='4' width='6' height='4' fill='%23141A33'/%3E%3Crect x='11' y='4' width='1' height='4' fill='%234FE3D3'/%3E%3Crect x='4' y='8' width='8' height='1' fill='%234FE3D3'/%3E%3Crect x='4' y='9' width='8' height='1' fill='%230A0B16'/%3E%3Crect x='5' y='10' width='1' height='1' fill='%230A0B16'/%3E%3Crect x='6' y='10' width='4' height='1' fill='%23369A8F'/%3E%3Crect x='10' y='10' width='1' height='1' fill='%230A0B16'/%3E%3Crect x='4' y='11' width='1' height='2' fill='%230A0B16'/%3E%3Crect x='5' y='11' width='2' height='1' fill='%23369A8F'/%3E%3Crect x='7' y='11' width='2' height='1' fill='%23CAF7F2'/%3E%3Crect x='9' y='11' width='2' height='1' fill='%23369A8F'/%3E%3Crect x='11' y='11' width='1' height='2' fill='%230A0B16'/%3E%3Crect x='5' y='12' width='6' height='1' fill='%23369A8F'/%3E%3Crect x='5' y='13' width='2' height='2' fill='%230A0B16'/%3E%3Crect x='9' y='13' width='2' height='2' fill='%230A0B16'/%3E%3Crect x='6' y='5' width='1' height='2' fill='%23A6FFF2'/%3E%3Crect x='9' y='5' width='1' height='2' fill='%23A6FFF2'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;family=Rubik:wght@400;500;600;700&amp;family=Silkscreen:wght@400;700&amp;display=swap">
@@ -20,7 +20,7 @@
 
   <div class="app" id="app">
     <!-- The office fills the whole window; the HUD floats above it. -->
-    <canvas id="office" role="img" aria-label="Bureau en pixel art où les agents se déplacent selon leur activité. Molette : zoom, glisser : déplacer, double-clic : recentrer."></canvas>
+    <canvas id="office" role="img" aria-label="Bureau en pixel art où les pix se déplacent selon leur activité. Molette : zoom, glisser : déplacer, double-clic : recentrer."></canvas>
 
     <div class="hud" id="hud">
       <!-- ============================== top row: ressources · toolbar · banners · toasts ============================== -->
@@ -28,19 +28,33 @@
         <header class="res-bar px-panel" id="res-bar" aria-label="Ressources">
           <div class="brand" title="PixelQG">
             <svg class="brand-mark" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true" focusable="false">
-              <rect x="2" y="4" width="12" height="7" fill="#D97757"/>
-              <rect x="2" y="4" width="12" height="1" fill="#F0A37F"/>
-              <rect x="2" y="10" width="12" height="1" fill="#B65F42"/>
-              <rect x="0" y="6" width="2" height="2" fill="#D97757"/>
-              <rect x="14" y="6" width="2" height="2" fill="#B65F42"/>
-              <rect class="brand-eye" x="5" y="6" width="1" height="2" fill="#1A1012"/>
-              <rect class="brand-eye" x="10" y="6" width="1" height="2" fill="#1A1012"/>
-              <rect x="3" y="11" width="1" height="2" fill="#B65F42"/>
-              <rect x="5" y="11" width="1" height="2" fill="#B65F42"/>
-              <rect x="10" y="11" width="1" height="2" fill="#B65F42"/>
-              <rect x="12" y="11" width="1" height="2" fill="#B65F42"/>
+              <rect x="7" y="0" width="2" height="1" fill="#FFC84A"/>
+              <rect x="8" y="1" width="1" height="1" fill="#8790B0"/>
+              <rect x="4" y="2" width="8" height="1" fill="#0A0B16"/>
+              <rect x="3" y="3" width="1" height="6" fill="#0A0B16"/>
+              <rect x="4" y="3" width="1" height="5" fill="#4FE3D3"/>
+              <rect x="5" y="3" width="2" height="1" fill="#9EF0E7"/>
+              <rect x="7" y="3" width="5" height="1" fill="#4FE3D3"/>
+              <rect x="12" y="3" width="1" height="6" fill="#0A0B16"/>
+              <rect x="5" y="4" width="6" height="4" fill="#141A33"/>
+              <rect x="11" y="4" width="1" height="4" fill="#4FE3D3"/>
+              <rect x="4" y="8" width="8" height="1" fill="#4FE3D3"/>
+              <rect x="4" y="9" width="8" height="1" fill="#0A0B16"/>
+              <rect x="5" y="10" width="1" height="1" fill="#0A0B16"/>
+              <rect x="6" y="10" width="4" height="1" fill="#369A8F"/>
+              <rect x="10" y="10" width="1" height="1" fill="#0A0B16"/>
+              <rect x="4" y="11" width="1" height="2" fill="#0A0B16"/>
+              <rect x="5" y="11" width="2" height="1" fill="#369A8F"/>
+              <rect x="7" y="11" width="2" height="1" fill="#CAF7F2"/>
+              <rect x="9" y="11" width="2" height="1" fill="#369A8F"/>
+              <rect x="11" y="11" width="1" height="2" fill="#0A0B16"/>
+              <rect x="5" y="12" width="6" height="1" fill="#369A8F"/>
+              <rect x="5" y="13" width="2" height="2" fill="#0A0B16"/>
+              <rect x="9" y="13" width="2" height="2" fill="#0A0B16"/>
+              <rect class="brand-eye" x="6" y="5" width="1" height="2" fill="#A6FFF2"/>
+              <rect class="brand-eye" x="9" y="5" width="1" height="2" fill="#A6FFF2"/>
             </svg>
-            <h1 class="wordmark">Claude <span>HQ</span></h1>
+            <h1 class="wordmark">Pixel<span>QG</span></h1>
           </div>
 
           <dl class="res" aria-label="Statistiques globales">
@@ -72,7 +86,7 @@
         </header>
 
         <nav class="toolbar px-panel" id="toolbar" aria-label="Actions du bureau">
-          <button type="button" class="tb" id="tb-agent" data-win-btn="agent" aria-pressed="false" aria-controls="win-agent" aria-label="Nouvel agent" data-tip="Nouvel agent">
+          <button type="button" class="tb" id="tb-agent" data-win-btn="agent" aria-pressed="false" aria-controls="win-agent" aria-label="Nouveau pix" data-tip="Nouveau pix">
             <span class="tb-ico" data-icon="agent"></span><span class="tb-plus" aria-hidden="true">+</span>
           </button>
           <button type="button" class="tb" id="tb-term" data-win-btn="terminal" aria-pressed="false" aria-controls="win-term" aria-label="Terminal" data-tip="Terminal">
@@ -88,7 +102,7 @@
           <button type="button" class="tb tb-toggle" id="btn-observe" aria-pressed="false" aria-label="Sessions externes" data-tip="Sessions externes : affiche aussi Claude Code lancé ailleurs">
             <span class="tb-ico" data-icon="eye"></span><span class="tb-led" aria-hidden="true"></span>
           </button>
-          <button type="button" class="tb tb-toggle" id="tb-tour" aria-pressed="false" aria-label="Visite guidée" data-tip="Visite guidée : la caméra passe d'agent en agent">
+          <button type="button" class="tb tb-toggle" id="tb-tour" aria-pressed="false" aria-label="Visite guidée" data-tip="Visite guidée : la caméra passe de pix en pix">
             <span class="tb-ico" data-icon="camera"></span><span class="tb-led" aria-hidden="true"></span>
           </button>
           <button type="button" class="tb tb-toggle" id="tb-sound" aria-pressed="false" aria-label="Son" data-tip="Son 8-bit (coupé par défaut)">
@@ -108,16 +122,16 @@
       <div class="stage-empty px-panel" id="stage-empty" hidden>
         <canvas class="empty-avatar" id="empty-avatar" aria-hidden="true"></canvas>
         <div class="stage-empty-text">
-          <p class="stage-empty-title">Le bureau attend son équipe</p>
-          <p class="stage-empty-sub">Lance un premier agent depuis « Nouvel agent », ou tape <kbd>claude</kbd> dans la fenêtre « Terminal ».</p>
+          <p class="stage-empty-title">Le bureau attend ses pix</p>
+          <p class="stage-empty-sub">Lance un premier pix (agent Claude Code) depuis « Nouveau pix », ou tape <kbd>claude</kbd> dans la fenêtre « Terminal ».</p>
           <div class="stage-empty-actions">
-            <button type="button" class="btn btn-primary btn-sm" id="stage-write">Nouvel agent</button>
+            <button type="button" class="btn btn-primary btn-sm" id="stage-write">Nouveau pix</button>
             <button type="button" class="btn btn-sm" id="stage-term"><span class="term-glyph" aria-hidden="true">&gt;_</span><span>Terminal</span></button>
           </div>
         </div>
       </div>
 
-      <!-- ============================== bottom row: minimap · équipe ============================== -->
+      <!-- ============================== bottom row: minimap · tes pix ============================== -->
       <div class="hud-bottom" id="hud-bottom">
         <section class="minimap px-panel" id="minimap-panel" data-open="true" aria-label="Plan du bureau">
           <header class="mm-head">
@@ -136,10 +150,10 @@
 
         <section class="party px-panel" id="party" aria-labelledby="party-title">
           <header class="party-head">
-            <h2 class="px-label" id="party-title">Équipe</h2>
-            <span class="count-badge num" id="roster-count" aria-label="Nombre d'agents">0</span>
+            <h2 class="px-label" id="party-title">Tes pix</h2>
+            <span class="count-badge num" id="roster-count" aria-label="Nombre de pix">0</span>
           </header>
-          <ul class="party-list" id="party-list" aria-label="Agents du bureau"></ul>
+          <ul class="party-list" id="party-list" aria-label="Pix du bureau"></ul>
           <p class="party-empty" id="party-empty">Personne au bureau pour l'instant.</p>
         </section>
       </div>
@@ -158,7 +172,7 @@
             <span class="lvl-badge num" id="d-level" title="Niveau">1</span>
           </div>
           <div class="sheet-id">
-            <h2 class="drawer-name" id="d-name">Agent</h2>
+            <h2 class="drawer-name" id="d-name">Pix</h2>
             <p class="sheet-rank" id="d-level-title">Stagiaire</p>
             <div class="xp" id="d-xp" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Expérience">
               <span class="xp-fill" id="d-xp-fill"></span>
@@ -174,7 +188,7 @@
           <span class="drawer-timer num" id="d-timer-top" title="Durée de travail">00:00</span>
         </div>
 
-        <div class="tabs" role="tablist" aria-label="Fiche de l'agent">
+        <div class="tabs" role="tablist" aria-label="Fiche du pix">
           <button type="button" class="tab" role="tab" id="tab-info" aria-controls="panel-info" aria-selected="true" tabindex="0">Fiche</button>
           <button type="button" class="tab" role="tab" id="tab-log" aria-controls="panel-log" aria-selected="false" tabindex="-1">Journal <span class="tab-badge num" id="log-badge" hidden></span></button>
         </div>
@@ -217,7 +231,7 @@
               <dd id="d-model">—</dd>
             </div>
             <div class="fact fact-wide" id="d-parent-row" hidden>
-              <dt>Agent parent</dt>
+              <dt>Pix parent</dt>
               <dd><button type="button" class="linkish" id="d-parent"></button></dd>
             </div>
             <div class="fact fact-wide">
@@ -253,7 +267,7 @@
           </section>
 
           <section class="block" id="d-subs-block" hidden aria-labelledby="d-subs-title">
-            <h3 class="block-title" id="d-subs-title">Sous-agents <span class="block-meta num" id="d-subs-count">0</span></h3>
+            <h3 class="block-title" id="d-subs-title">Sous-pix <span class="block-meta num" id="d-subs-count">0</span></h3>
             <ul class="subs" id="d-subs"></ul>
           </section>
         </div>
@@ -280,7 +294,7 @@
             <span class="foot-spacer"></span>
             <button type="button" class="btn btn-ghost" id="d-remove">Retirer</button>
             <div class="confirm-box" id="d-remove-confirm" hidden role="group" aria-labelledby="d-remove-q">
-              <span class="confirm-q" id="d-remove-q">Retirer cet agent ?</span>
+              <span class="confirm-q" id="d-remove-q">Retirer ce pix ?</span>
               <button type="button" class="btn btn-danger btn-sm" id="d-remove-yes">Oui, retirer</button>
               <button type="button" class="btn btn-ghost btn-sm" id="d-remove-no">Annuler</button>
             </div>
@@ -288,20 +302,20 @@
         </footer>
       </section>
 
-      <!-- ============================== window « Nouvel agent » ============================== -->
+      <!-- ============================== window « Nouveau pix » ============================== -->
       <section class="win" id="win-agent" data-win="agent" role="dialog" aria-modal="false" aria-labelledby="win-agent-title" hidden>
         <header class="win-head" data-drag>
           <span class="win-ico" data-icon="agent"></span>
-          <h2 class="win-title" id="win-agent-title">Nouvel agent</h2>
+          <h2 class="win-title" id="win-agent-title">Nouveau pix</h2>
           <span class="win-hint"><kbd>Ctrl</kbd> + <kbd>Entrée</kbd> pour lancer</span>
-          <button type="button" class="win-close" data-close aria-label="Fermer la fenêtre « Nouvel agent »" title="Fermer"><span aria-hidden="true">×</span></button>
+          <button type="button" class="win-close" data-close aria-label="Fermer la fenêtre « Nouveau pix »" title="Fermer"><span aria-hidden="true">×</span></button>
         </header>
         <div class="win-body">
           <form class="launch" id="launch-form" novalidate autocomplete="off">
             <div class="launch-main">
               <div class="field field-prompt" id="fld-prompt">
                 <label for="f-prompt">Mission</label>
-                <textarea id="f-prompt" rows="5" spellcheck="true" aria-describedby="f-prompt-err" placeholder="Que doit faire l'agent ? Ex. : « Analyse ce projet et résume son architecture dans un fichier NOTES.md »"></textarea>
+                <textarea id="f-prompt" rows="5" spellcheck="true" aria-describedby="f-prompt-err" placeholder="Que doit faire le pix ? Ex. : « Analyse ce projet et résume son architecture dans un fichier NOTES.md »"></textarea>
                 <p class="field-err" id="f-prompt-err" hidden></p>
               </div>
             </div>
@@ -345,7 +359,7 @@
               <p class="form-err" id="f-error" role="alert" hidden></p>
               <p class="form-note" id="f-note" hidden></p>
               <button type="submit" class="btn btn-primary btn-launch" id="f-submit">
-                <span class="btn-launch-label" id="f-submit-label">Lancer l'agent</span>
+                <span class="btn-launch-label" id="f-submit-label">Lancer le pix</span>
               </button>
             </div>
           </form>
@@ -375,7 +389,7 @@
               <form class="term-tools" id="term-tools" novalidate autocomplete="off">
                 <div class="field term-field-cwd" id="fld-t-cwd">
                   <label for="t-cwd">Dossier</label>
-                  <input type="text" id="t-cwd" class="input mono" spellcheck="false" autocomplete="off" placeholder="C:\Users\toi\projet" title="Dossier de départ du terminal (le même que pour « Nouvel agent »)">
+                  <input type="text" id="t-cwd" class="input mono" spellcheck="false" autocomplete="off" placeholder="C:\Users\toi\projet" title="Dossier de départ du terminal (le même que pour « Nouveau pix »)">
                 </div>
                 <div class="field term-field-name" id="fld-t-name">
                   <label for="t-name">Nom</label>
@@ -476,7 +490,7 @@
             <div class="lib-empty" id="lib-empty">
               <span class="lib-empty-ico" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
               <p class="lib-empty-title" id="lib-empty-title">Aucun dépôt lié</p>
-              <p class="lib-empty-text" id="lib-empty-text">Colle le lien d'un dépôt GitHub de skills ou d'agents Claude Code : PixelQG le clone et tous les agents que tu lances ici peuvent s'en servir, sans toucher à ta configuration Claude Code.</p>
+              <p class="lib-empty-text" id="lib-empty-text">Colle le lien d'un dépôt GitHub de skills ou d'agents Claude Code : PixelQG le clone et tous les pix que tu lances ici peuvent s'en servir, sans toucher à ta configuration Claude Code.</p>
             </div>
           </div>
         </div>
@@ -487,7 +501,7 @@
         <header class="win-head" data-drag>
           <span class="win-ico" data-icon="trophy"></span>
           <h2 class="win-title" id="win-ach-title">Succès</h2>
-          <span class="win-hint" id="ach-hint">Débloque-les en faisant travailler ton équipe</span>
+          <span class="win-hint" id="ach-hint">Débloque-les en faisant travailler tes pix</span>
           <button type="button" class="win-close" data-close aria-label="Fermer la fenêtre « Succès »" title="Fermer"><span aria-hidden="true">×</span></button>
         </header>
         <div class="win-body">
@@ -515,7 +529,6 @@
   <script src="js/game/engine.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/terminal.js"></script>
-  <script src="js/license.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

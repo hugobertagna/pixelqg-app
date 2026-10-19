@@ -1,0 +1,16 @@
+name: Proposer une idée
+description: Une fonctionnalité, une pièce du bureau, une amélioration
+labels: ["idée"]
+body:
+  - type: textarea
+    id: idee
+    attributes:
+      label: Ton idée
+      description: Qu’est-ce que tu aimerais voir dans PixelQG ?
+    validations:
+      required: true
+  - type: textarea
+    id: pourquoi
+    attributes:
+      label: Pourquoi
+      description: À quoi ça te servirait au quotidien ?

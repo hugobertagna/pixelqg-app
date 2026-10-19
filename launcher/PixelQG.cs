@@ -92,10 +92,10 @@ static class Program
         string appDir = FindAppDir();
         if (appDir == null)
         {
-            Fail("Je ne trouve pas le dossier de PixelQG.\n\nGarde « PixelQG.exe » à côté du dossier « pixelqg-app » (par exemple sur ton bureau), puis relance-le.");
+            Fail("Je ne trouve pas le dossier de PixelQG.\n\nGarde « PixelQG.exe » dans le dossier de PixelQG (à côté des dossiers « server » et « public »), ou à côté du dossier « pixelqg-app », puis relance-le.");
             return 1;
         }
-        string node = FindNode();
+        string node = FindNode(appDir);
         if (node == null)
         {
             DialogResult r = MessageBox.Show(
@@ -415,6 +415,8 @@ static class Program
     static string FindAppDir()
     {
         List<string> candidates = new List<string>();
+        // The exe's own folder comes first: that is the release layout (PixelQG.exe next to server\,
+        // public\ and runtime\), also used by the installer in %LOCALAPPDATA%\Programs\PixelQG.
         string dir = AppDomain.CurrentDomain.BaseDirectory;
         for (int i = 0; i < 4 && dir != null; i++)
         {
@@ -430,6 +432,7 @@ static class Program
         candidates.Add(Path.Combine(home, @"OneDrive\Desktop\pixelqg-app"));
         candidates.Add(Path.Combine(home, @"Desktop\pixelqg-app"));
         candidates.Add(Path.Combine(home, @"Bureau\pixelqg-app"));
+        candidates.Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Programs\PixelQG"));
         foreach (string c in candidates)
         {
             try
@@ -442,8 +445,18 @@ static class Program
         return null;
     }
 
-    static string FindNode()
+    static string FindNode(string appDir)
     {
+        // The Node.js runtime shipped with the release (runtime\node.exe) wins over any install.
+        string[] bundled = new string[] {
+            Path.Combine(Path.Combine(appDir, "runtime"), "node.exe"),
+            Path.Combine(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "runtime"), "node.exe"),
+        };
+        foreach (string b in bundled)
+        {
+            try { if (File.Exists(b)) return Path.GetFullPath(b); }
+            catch { }
+        }
         string path = Environment.GetEnvironmentVariable("PATH") ?? "";
         foreach (string part in path.Split(';'))
         {

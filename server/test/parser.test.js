@@ -268,7 +268,7 @@ test('manager: stop/message/remove guards', () => {
   const observed = m.createRoot({ source: 'observed', id: 'o-12345678', cwd: os.tmpdir(), status: 'working', canControl: false });
   assert.throws(() => m.stop(observed.id), (e) => e.status === 409);
   assert.throws(() => m.sendMessage(observed.id, { prompt: 'x' }), (e) => e.status === 409);
-  assert.throws(() => m.stop('nope'), (e) => e.status === 404 && e.message === 'Agent introuvable.');
+  assert.throws(() => m.stop('nope'), (e) => e.status === 404 && e.message === 'Pix introuvable.');
   const root = newRoot(m);
   assert.throws(() => m.sendMessage(root.id, { prompt: 'x' }), (e) => e.status === 409 && /travaille encore/.test(e.message));
   m.feed(root.id, { type: 'result', is_error: false, result: 'ok' });

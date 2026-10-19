@@ -22,9 +22,9 @@ test('names: pool order, live names avoided, numbered when exhausted', () => {
 });
 
 test('colors: palette order, live colors avoided, least used when all taken', () => {
-  assert.deepEqual(COLORS, ['#D97757', '#5BA4E6', '#7BC67E', '#B48EE0', '#F2C14E', '#E0709B', '#4FC1B9', '#E8955A', '#8E9BF0', '#C9D86B', '#F07C6C', '#A0A7B8']);
-  assert.equal(pickColor([]), '#D97757');
-  assert.equal(pickColor(['#d97757']), '#5BA4E6');
+  assert.deepEqual(COLORS, ['#FF8A5B', '#5BA4E6', '#7BC67E', '#B48EE0', '#F2C14E', '#E0709B', '#4FC1B9', '#E8955A', '#8E9BF0', '#C9D86B', '#F07C6C', '#A0A7B8']);
+  assert.equal(pickColor([]), '#FF8A5B');
+  assert.equal(pickColor(['#FF8A5B']), '#5BA4E6');
   assert.equal(pickColor([...COLORS, ...COLORS.slice(0, 3)]), '#B48EE0');
 });
 
@@ -34,12 +34,12 @@ test('manager allocates distinct names and colors to live agents only', () => {
   const b = m.createRoot({ source: 'observed', cwd: '/tmp', status: 'starting' });
   assert.equal(a.name, 'Nova');
   assert.equal(b.name, 'Pixel');
-  assert.equal(a.color, '#D97757');
+  assert.equal(a.color, '#FF8A5B');
   assert.equal(b.color, '#5BA4E6');
   m.remove(a.id);
   const c = m.createRoot({ source: 'observed', cwd: '/tmp', status: 'starting' });
   assert.equal(c.name, 'Nova', 'a freed name is reused');
-  assert.equal(c.color, '#D97757');
+  assert.equal(c.color, '#FF8A5B');
 });
 
 test('claude-bin: CLAUDE_BIN .js file runs with the current node', async () => {

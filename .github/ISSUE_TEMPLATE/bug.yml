@@ -1,0 +1,31 @@
+name: Signaler un bug
+description: Quelque chose ne marche pas comme prévu
+labels: ["bug"]
+body:
+  - type: textarea
+    id: probleme
+    attributes:
+      label: Que se passe-t-il ?
+      description: Décris le problème et ce que tu attendais à la place.
+    validations:
+      required: true
+  - type: textarea
+    id: etapes
+    attributes:
+      label: Comment le reproduire
+      placeholder: "1. Ouvre…  2. Clique sur…  3. Le pix…"
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Windows, PixelQG, et Claude Code (claude --version).
+      placeholder: Windows 11, PixelQG 1.0.0, Claude Code 2.1.302
+    validations:
+      required: true
+  - type: textarea
+    id: captures
+    attributes:
+      label: Captures ou journal
+      description: Pense à masquer ton nom d’utilisateur dans les chemins de dossiers.

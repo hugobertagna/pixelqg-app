@@ -112,7 +112,6 @@ test('integrated terminal: REST, WebSocket, shim and session linking', { skip },
   setEnv({ HQ_FAKE_CLAUDE: '1', FAKE_CLAUDE_PROJECTS: projects, FAKE_CLAUDE_CTL: ctl, FAKE_CLAUDE_LOG: logFile, FAKE_CLAUDE_EXIT: '0' });
 
   const app = await startServer({
-    license: { bypass: true },
     port: 0,
     observe: false,
     publicDir: makePublicDir(),
@@ -464,4 +463,146 @@ test('integrated terminal: REST, WebSocket, shim and session linking', { skip },
     await waitFor(() => !alive(bridge1), 5000, 'bridge t1 gone');
     await waitFor(() => socket.closed, 5000, 'socket closed by the shutdown');
   });
+});
+
+// ------------------------------------------------------------------------------------------------
+// macOS / Linux mode (experimental): simulated with a fake `script` process on any host. The real
+// command lines were checked by hand in a Linux pseudo-terminal; nothing here ran on a real Mac.
+
+function fakeScriptChild() {
+  const { EventEmitter } = require('node:events');
+  const { PassThrough } = require('node:stream');
+  const child = new EventEmitter();
+  child.pid = 4242;
+  child.stdin = new PassThrough();
+  child.stdout = new PassThrough();
+  child.stderr = new PassThrough();
+  child.written = [];
+  child.stdin.on('data', (b) => child.written.push(b));
+  child.signals = [];
+  child.kill = (sig) => {
+    child.signals.push(sig);
+    setImmediate(() => {
+      child.stdout.end();
+      child.emit('close', null, sig);
+    });
+    return true;
+  };
+  return child;
+}
+
+test('macOS / Linux mode: shell inside `script`, sized by the first resize, raw input, SIGKILL', async () => {
+  const { EventEmitter } = require('node:events');
+  const { TerminalManager } = require('../terminals');
+  class StubManager extends EventEmitter {
+    ensureClaude() { return { command: '/opt/claude/bin/claude', prefixArgs: [] }; }
+    validateProfile() { return null; }
+    endTerminalLinksOf(id, info) { this.ended = { id, info }; }
+  }
+  const dir = tmpDir('pixelqg-app-posix-');
+  const exe = (name) => {
+    const p = path.join(dir, name);
+    fs.writeFileSync(p, '#!/bin/sh\n');
+    fs.chmodSync(p, 0o755);
+    return p;
+  };
+  const script = exe('script');
+  const bash = exe('bash');
+  const zsh = exe('zsh');
+  const calls = [];
+  const spawn = (file, args, options) => {
+    const child = fakeScriptChild();
+    calls.push({ file, args, options, child });
+    return child;
+  };
+  const make = (platform, extra = {}) => new TerminalManager({
+    manager: new StubManager(), platform, scriptPath: script, shellPath: bash, spawn, posixStartWaitMs: 5000, ...extra,
+  });
+  const tick = () => new Promise((resolve) => setImmediate(resolve));
+  const q = (s) => `'${s}'`;
+  const bashrc = path.join(SHIM_DIR, 'posix', 'bashrc');
+
+  // Linux: util-linux syntax, the shell waits for the page's size.
+  const linux = make('linux');
+  assert.deepEqual(await linux.init(), { supported: true, reason: null, shell: 'bash' });
+  const t = linux.create({ cwd: dir });
+  assert.equal(t.shell, 'bash');
+  assert.equal(calls.length, 0, 'the shell waits for the first size');
+  assert.match(linux.replay(t.id), /Terminal expérimental/);
+  assert.equal(linux.resize(t.id, 100, 40), true);
+  assert.equal(calls.length, 1);
+  const c = calls[0];
+  assert.equal(c.file, script);
+  assert.deepEqual(c.args, ['-qefc', `stty cols 100 rows 40 2>/dev/null; exec ${q(bash)} ${q('--rcfile')} ${q(bashrc)}`, '/dev/null']);
+  assert.equal(c.options.detached, true);
+  assert.equal(c.options.windowsHide, true);
+  assert.equal(c.options.cwd, dir);
+  const env = c.options.env;
+  assert.ok(env.PATH.startsWith(SHIM_DIR + path.delimiter), 'shim first in PATH');
+  assert.equal(env.TERM, 'xterm-256color');
+  assert.equal(env.SHELL, bash);
+  assert.equal(env.PIXELQG_TERMINAL, t.id);
+  assert.equal(env.PIXELQG_SHIM, SHIM_SCRIPT);
+  assert.equal(env.PIXELQG_REAL_CLAUDE, '/opt/claude/bin/claude');
+  assert.equal(env.TERM_PROGRAM, undefined);
+  assert.equal(linux.resize(t.id, 150, 50), false, 'no resize afterwards');
+  assert.equal(linux.get(t.id).cols, 100);
+  assert.equal(linux.get(t.id).rows, 40);
+  assert.equal(linux.write(t.id, 'ls -la\r'), true);
+  await tick();
+  assert.equal(Buffer.concat(c.child.written).toString('utf8'), 'ls -la\r', 'raw keystrokes, no bridge frames');
+  c.child.stdout.write('user@host:~$ ');
+  await tick();
+  assert.match(linux.replay(t.id), /user@host:~\$ $/);
+  await linux.kill(t.id);
+  assert.deepEqual(c.child.signals, ['SIGKILL']);
+  assert.equal(linux.get(t.id).status, 'exited');
+
+  // « Lancer Claude Code »: `claude` is typed once the shell printed something, never before it runs.
+  const t2 = linux.create({ cwd: dir, launchClaude: true });
+  await tick();
+  assert.equal(calls.length, 1);
+  linux.resize(t2.id, 80, 24);
+  const c2 = calls[1];
+  await tick();
+  assert.equal(c2.child.written.length, 0);
+  c2.child.stdout.write('$ ');
+  await tick();
+  assert.equal(Buffer.concat(c2.child.written).toString('utf8'), 'claude\r');
+
+  // Closed before its shell started: nothing is spawned.
+  const t3 = linux.create({ cwd: dir });
+  await linux.kill(t3.id);
+  assert.equal(linux.get(t3.id).status, 'exited');
+  assert.equal(calls.length, 2);
+  await linux.shutdown();
+
+  // No size from the page: starts after the wait with 120×30.
+  const late = make('linux', { posixStartWaitMs: 20 });
+  await late.init();
+  late.create({ cwd: dir });
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  assert.equal(calls.length, 3);
+  assert.match(calls[2].args[1], /^stty cols 120 rows 30 /);
+  await late.shutdown();
+
+  // macOS: BSD syntax; zsh gets its startup wrapper through ZDOTDIR.
+  const mac = make('darwin', { shellPath: zsh });
+  assert.deepEqual(await mac.init(), { supported: true, reason: null, shell: 'zsh' });
+  const m = mac.create({ cwd: dir });
+  mac.resize(m.id, 90, 30);
+  const cm = calls[3];
+  assert.deepEqual(cm.args, ['-q', '/dev/null', '/bin/sh', '-c', `stty cols 90 rows 30 2>/dev/null; exec ${q(zsh)}`]);
+  assert.equal(cm.options.env.ZDOTDIR, path.join(SHIM_DIR, 'posix', 'zsh'));
+  assert.equal(typeof cm.options.env.PIXELQG_USER_ZDOTDIR, 'string');
+  await mac.shutdown();
+
+  // Unavailable: no `script` command, or another system.
+  const noScript = make('linux', { scriptPath: path.join(dir, 'absent') });
+  const cfg = await noScript.init();
+  assert.equal(cfg.supported, false);
+  assert.match(cfg.reason, /commande « script »/);
+  assert.throws(() => noScript.create({ cwd: dir }), /script/);
+  const other = make('aix');
+  assert.match((await other.init()).reason, /Windows, macOS et Linux/);
 });

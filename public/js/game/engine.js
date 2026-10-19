@@ -1159,7 +1159,7 @@
         const rr = sel ? r + Math.round(dpr) : r;
         g.fillStyle = '#0B0C13';
         g.fillRect(x - rr - 1, y - rr - 1, rr * 2 + 2, rr * 2 + 2);
-        g.fillStyle = (ch.agent && ch.agent.color) || ch.color || '#D97757';
+        g.fillStyle = (ch.agent && ch.agent.color) || ch.color || '#FF8A5B';
         g.fillRect(x - rr, y - rr, rr * 2, rr * 2);
         if (sel) {
           g.strokeStyle = '#FFFFFF';
@@ -1368,7 +1368,7 @@
       const tk = tokensTotal(a);
       const lv = levelInfo(tk);
       const status = a.interactive === true && a.status === 'waiting' ? 'T\'attend' : (STATUS_FR[a.status] || '');
-      const sub = (lv ? 'Niv. ' + lv.level + ' · ' + lv.title : (a.kind === 'sub' ? 'Sous-agent' : 'Agent')) + (status ? ' · ' + status : '');
+      const sub = (lv ? 'Niv. ' + lv.level + ' · ' + lv.title : (a.kind === 'sub' ? 'Sous-pix' : 'Pix')) + (status ? ' · ' + status : '');
       const label = a.activity && a.activity.label ? String(a.activity.label) : '';
       showTip('agent', a.color || '', String(a.name || a.id), sub, label, fmtTok(tk) + ' tokens' + (a.kind === 'sub' && a.role ? ' · ' + a.role : ''));
       tip.roomId = null;

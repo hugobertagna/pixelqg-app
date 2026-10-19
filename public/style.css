@@ -13,8 +13,8 @@
   --line: #363b55;
   --text: #ece8f4;
   --muted: #9b9cb8;
-  --accent: #D97757;
-  --accent-2: #f0a37f;
+  --accent: #FFC84A;
+  --accent-2: #FFE08A;
   --ok: #6cc28a;
   --warn: #f2c14e;
   --err: #e5534b;
@@ -347,7 +347,7 @@ select.input option { color: var(--text); background: var(--panel); }
   outline-offset: 3px;
 }
 .swatch--auto .swatch-chip {
-  background: conic-gradient(#D97757 0 25%, #5BA4E6 0 50%, #7BC67E 0 75%, #B48EE0 0);
+  background: conic-gradient(#FF8A5B 0 25%, #5BA4E6 0 50%, #7BC67E 0 75%, #B48EE0 0);
   font: 700 8px/1 var(--font-pixel);
   color: #fff;
   text-shadow: 1px 1px 0 rgba(0, 0, 0, .7);
@@ -2404,99 +2404,4 @@ body { background: var(--ink); }
     flex: none;
     z-index: 70;
   }
-}
-
-/* ------------------------------------------------------------------ licence: login window, account menu, developer ribbon
-   (built by js/license.js) */
-.lic-gate {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  display: grid;
-  place-items: center;
-  padding: 16px;
-  overflow-y: auto;
-  background-color: var(--ink);
-  background-image:
-    radial-gradient(900px 480px at 50% -10%, rgba(217, 119, 87, .16), transparent 62%),
-    radial-gradient(700px 420px at 100% 110%, rgba(106, 169, 255, .08), transparent 60%),
-    radial-gradient(rgba(255, 255, 255, .045) 1px, transparent 1.4px);
-  background-size: auto, auto, 16px 16px;
-}
-.lic-win {
-  width: min(440px, 100%);
-  background: var(--hud-solid);
-  border: 2px solid var(--frame);
-  box-shadow: 0 0 0 2px var(--edge), 8px 8px 0 rgba(0, 0, 0, .32);
-  animation: lic-pop .18s steps(3) both;
-}
-.lic-win .win-head {
-  background:
-    repeating-linear-gradient(180deg, rgba(255, 255, 255, .05) 0 2px, transparent 2px 4px),
-    linear-gradient(90deg, color-mix(in srgb, var(--accent) 34%, var(--title-bg)), var(--title-bg) 60%);
-}
-.lic-body { display: flex; flex-direction: column; gap: 14px; padding: 18px 18px 16px; }
-.lic-hero { display: flex; align-items: center; gap: 14px; }
-.lic-mark { width: 56px; height: 56px; flex: none; image-rendering: pixelated; animation: lic-bob 1.6s steps(2) infinite; }
-.lic-brand { font: 700 20px/1 var(--font-pixel); color: var(--text); text-shadow: 2px 2px 0 var(--edge); }
-.lic-sub { margin-top: 6px; font-size: 13px; color: var(--muted); }
-.lic-form { display: grid; gap: 12px; }
-.lic-submit { width: 100%; min-height: 40px; font-size: 14px; }
-.lic-retry { display: flex; gap: 8px; flex-wrap: wrap; }
-.lic-retry:not(:has(> :not([hidden]))) { display: none; }
-.lic-msg {
-  --c: var(--err);
-  padding: 7px 9px;
-  font-size: 12.5px;
-  line-height: 1.4;
-  color: color-mix(in srgb, var(--c) 45%, #fff);
-  background: color-mix(in srgb, var(--c) 12%, var(--ink-2));
-  border: 2px solid color-mix(in srgb, var(--c) 50%, var(--line));
-}
-.lic-msg--info { --c: var(--info); }
-.lic-links { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
-.lic-link { flex: 1 1 150px; text-decoration: none; }
-.lic-link--buy { --btn-fg: var(--gold); --btn-line: #6b5a2c; }
-.lic-link.is-hot { --btn-line: var(--accent); animation: lic-blink 1s steps(2) 3; }
-.lic-note { padding-top: 10px; font-size: 11.5px; line-height: 1.4; color: var(--muted); border-top: 2px solid var(--line-2); }
-
-.tb.is-open { color: #fff; background: color-mix(in srgb, var(--accent) 30%, var(--panel-2)); border-color: var(--accent); }
-.lic-menu {
-  position: fixed;
-  z-index: 85;
-  display: grid;
-  gap: 8px;
-  width: min(300px, calc(100vw - 16px));
-  padding: 12px;
-  background: var(--hud-solid);
-}
-.lic-menu-email { font: 500 12.5px/1.35 var(--font-mono); color: var(--text); overflow-wrap: anywhere; }
-.lic-menu-status { font-size: 12px; line-height: 1.4; color: var(--muted); }
-.lic-menu-actions, .lic-confirm-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.lic-menu-actions .btn { text-decoration: none; }
-.lic-confirm { display: grid; gap: 8px; }
-.lic-confirm-q { font-size: 12.5px; color: #f6b3ae; }
-
-.lic-dev {
-  position: fixed;
-  top: 0;
-  left: 50%;
-  z-index: 95;
-  padding: 2px 8px 3px;
-  font: 400 9.5px/1.2 var(--font-pixel);
-  text-transform: uppercase;
-  letter-spacing: .04em;
-  color: var(--ink);
-  background: var(--warn);
-  border: 2px solid var(--edge);
-  border-top: 0;
-  transform: translateX(-50%);
-  white-space: nowrap;
-}
-
-@keyframes lic-pop { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes lic-bob { 50% { transform: translateY(-2px); } }
-@keyframes lic-blink { 50% { --btn-bg: color-mix(in srgb, var(--accent) 30%, var(--panel-2)); } }
-@media (prefers-reduced-motion: reduce) {
-  .lic-win, .lic-mark, .lic-link.is-hot { animation: none !important; }
 }

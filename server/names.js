@@ -4,7 +4,7 @@
 // Allocation always prefers entries that are not used by a live agent.
 
 const COLORS = Object.freeze([
-  '#D97757', '#5BA4E6', '#7BC67E', '#B48EE0', '#F2C14E', '#E0709B',
+  '#FF8A5B', '#5BA4E6', '#7BC67E', '#B48EE0', '#F2C14E', '#E0709B',
   '#4FC1B9', '#E8955A', '#8E9BF0', '#C9D86B', '#F07C6C', '#A0A7B8',
 ]);
 

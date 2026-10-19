@@ -1,12 +1,14 @@
 # PixelQG — shared build contract
 
 Local app: a Node server spawns real Claude Code processes and streams their activity to a browser page.
-The page shows a pixel-art office where every agent is a little Clawd-style character (the blocky
-Claude Code mascot), tinted in its own color, walking between rooms according to what it is doing.
+The page shows a pixel-art office where every agent is a little PixelQG robot (the screen-headed
+office bot of the PixelQG site), tinted in its own color, walking between rooms according to what it is doing.
 All UI text is in **French**. Code comments in English. **Zero npm dependencies** (Node 22 built-ins
 only, vanilla browser JS, no build step). Windows 11 is the primary platform; must also work on macOS/Linux.
 
 > **2026-10-19: demo mode was removed** (no demo.js, `--demo`, `/api/demo*`, `config.demo` or source "demo" any more); the demo mentions below are historical.
+
+> **2026-10-20: the licence gate was removed** (PixelQG is free and open source, MIT): no login, no server/license.js, `/api/license*`, 402 `license_required`, `config.license` or `license` SSE event any more.
 
 Project root: `C:\Users\alex\OneDrive\Bureau\pixelqg-app`
 
@@ -30,7 +32,7 @@ pixelqg-app/
     style.css         all page styles                                 (builder C)
     js/main.js        boot, API client, SSE, store, wiring            (builder C)
     js/ui.js          HUD: launcher, roster, detail drawer, logs      (builder C)
-    js/game/sprites.js     Clawd sprite generator + avatar drawing    (builder B)
+    js/game/sprites.js     robot sprite generator + avatar drawing    (builder B)
     js/game/office.js      map, rooms, furniture, walkable grid, A*   (builder B)
     js/game/characters.js  Character entity, behaviours, bubbles, FX  (builder B)
     js/game/engine.js      canvas loop, camera, input, window.HQGame  (builder B)
@@ -279,18 +281,19 @@ Hover → pointer cursor + highlight; click → onSelect(id). Selected → pulsi
 Ambient life: server LEDs blink, coffee steam, monitor glow when the desk owner types, potted plants, wall clock.
 Respect prefers-reduced-motion. Target 60 fps with 30 characters; pause rendering when the tab is hidden.
 
-### Clawd sprite (sprites.js)
-Inspired by the Claude Code terminal mascot: a chunky rectangular block body (wider than tall, ~14×9 px), two black square
-eyes near the top, small rectangular arm nubs sticking out left and right, four short legs underneath; flat pixel shading
-(top highlight row lighter, bottom/side darker). Tinted with the agent color (derive light/dark shades via HSL).
-Frames: idle (2-frame breathing bob), walk (4 frames, legs alternate) in 4 directions (left/right mirrored; up shows back, no eyes),
+### Robot sprite (sprites.js)
+The PixelQG mascot (same family as the site's bot): a 12×8 monitor head (casing in the agent color with a 2 px highlight,
+dark screen with two tall glowing cyan eyes), a gold antenna on a grey stalk, a darker body with a chest light, thin arms
+under the head, two short ink legs, 1 px ink outline. Tinted with the agent color (derive light/dark shades via HSL).
+Frames: idle (2-frame breathing bob), walk (4 frames, legs alternate) in 8 directions (left variants mirrored; up shows the
+back of the screen head, no face),
 work (arms up/down), plus blink every few seconds. Cache rendered frames per color in offscreen canvases.
 Scale the sprite so a character is about 1.2 tiles wide on screen. Drop shadow ellipse under feet.
 
 ## 11. Page / HUD (builder C)
 Layout (desktop): top bar · main area = game canvas (left, flexible) + right sidebar 360 px (roster + detail drawer) ·
 launcher dock under the canvas (collapsible). Narrow (< 900 px): sidebar stacks under the canvas.
-- Top bar: wordmark "PixelQG" with a mini Clawd, live global stats: agents actifs / total, tokens totaux (k/M),
+- Top bar: wordmark "PixelQG" with a mini robot, live global stats: agents actifs / total, tokens totaux (k/M),
   coût total ($, 2–4 decimals), temps cumulé; buttons: "Mode démo" toggle, "Sessions externes" toggle (observe), claude version / "Claude Code introuvable" warning.
 - Launcher: prompt textarea (Ctrl+Entrée = lancer), name input (placeholder = next name), color swatches (12), model select,
   permission select (warning text when danger), effort select, working-directory input (default config.defaultCwd, remembered

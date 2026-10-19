@@ -1,4 +1,5 @@
-// Generates launcher/clawd.ico (+ clawd-preview.png) from a 16x16 pixel map of the Clawd mascot.
+// Generates launcher/pixelqg.ico (+ pixelqg-preview.png) from a 16x16 pixel map of the PixelQG robot
+// (the screen-headed office bot of the site: same pixels and colours as the favicon).
 // Zero dependencies: hand-written PNG and ICO encoders (zlib is a Node built-in).
 'use strict';
 
@@ -6,32 +7,36 @@ const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 
-// '.' transparent, o outline, h highlight, b body, s shade, e eye
+// '.' transparent, a antenna, g stalk, k ink outline, c casing, h highlight, s screen, e eye, d body, l chest light
 const MAP = [
-  '................',
-  '................',
-  '..oooooooooooo..',
-  '..ohhhhhhhhhho..',
-  '..obbbbbbbbbbo..',
-  '..obbebbbbebbo..',
-  '.oobbebbbbebboo.',
-  'obbbbbbbbbbbbbbo',
-  'osbbbbbbbbbbbbso',
-  '.oobbbbbbbbbboo.',
-  '..osssssssssso..',
-  '..oooooooooooo..',
-  '....s.s..s.s....',
-  '....s.s..s.s....',
-  '....o.o..o.o....',
+  '.......aa.......',
+  '........g.......',
+  '....kkkkkkkk....',
+  '...kchhccccck...',
+  '...kcssssssck...',
+  '...kcsessesck...',
+  '...kcsessesck...',
+  '...kcssssssck...',
+  '...kcccccccck...',
+  '....kkkkkkkk....',
+  '.....kddddk.....',
+  '....kddllddk....',
+  '....kddddddk....',
+  '.....kk..kk.....',
+  '.....kk..kk.....',
   '................',
 ];
 
 const COLORS = {
-  o: [0x4a, 0x24, 0x16, 255],
-  h: [0xf0, 0xa3, 0x7f, 255],
-  b: [0xd9, 0x77, 0x57, 255],
-  s: [0xb0, 0x55, 0x3a, 255],
-  e: [0x1a, 0x11, 0x10, 255],
+  a: [0xff, 0xc8, 0x4a, 255],
+  g: [0x87, 0x90, 0xb0, 255],
+  k: [0x0a, 0x0b, 0x16, 255],
+  c: [0x4f, 0xe3, 0xd3, 255],
+  h: [0x9e, 0xf0, 0xe7, 255],
+  s: [0x14, 0x1a, 0x33, 255],
+  e: [0xa6, 0xff, 0xf2, 255],
+  d: [0x36, 0x9a, 0x8f, 255],
+  l: [0xca, 0xf7, 0xf2, 255],
   '.': [0, 0, 0, 0],
 };
 
@@ -134,6 +139,6 @@ function ico(sizes) {
 }
 
 const outDir = __dirname;
-fs.writeFileSync(path.join(outDir, 'clawd.ico'), ico([16, 32, 48, 64, 128, 256]));
-fs.writeFileSync(path.join(outDir, 'clawd-preview.png'), png(256));
-console.log('Icône écrite : ' + path.join(outDir, 'clawd.ico'));
+fs.writeFileSync(path.join(outDir, 'pixelqg.ico'), ico([16, 32, 48, 64, 128, 256]));
+fs.writeFileSync(path.join(outDir, 'pixelqg-preview.png'), png(256));
+console.log('Icône écrite : ' + path.join(outDir, 'pixelqg.ico'));

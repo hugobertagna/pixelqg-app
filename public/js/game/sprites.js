@@ -1,5 +1,6 @@
 /* PixelQG — sprites.js
- * Procedural "Clawd" sprites (the blocky Claude Code mascot) tinted per agent in 8 facing directions,
+ * Procedural PixelQG robot sprites (the screen-headed office bot: monitor head with a dark screen face,
+ * gold antenna, small body with a chest light, two legs) tinted per agent in 8 facing directions,
  * held / used items (book, magnifier, laptop, letter, paper, mug, marker, tablet, globe) cached per colour,
  * a pixel drop shadow, a selection spotlight and the static avatar renderer used by the HUD.
  * Everything is generated with fillRect into cached offscreen canvases: no image files.
@@ -8,10 +9,18 @@
 (function (global) {
   'use strict';
 
-  const W = 20;            // frame width in world pixels (body 14 px + arm nubs + outline)
+  const W = 20;            // frame width in world pixels (12 px head + raised arms + outline)
   const H = 16;            // frame height in world pixels; feet touch the bottom row
-  const EYE = '#16151d';
-  const FALLBACK = '#D97757';
+  // Fixed robot colours (same family as the PixelQG site mascot).
+  const INK = '#0A0B16';       // outline and legs
+  const SCREEN = '#141A33';    // screen face
+  const EYE = '#A6FFF2';       // eye glow
+  const EYE_DIM = '#5F9E98';   // eyes of a sleeping / stopped bot
+  const EYE_ERR = '#FF6B5E';   // "x" eyes
+  const ANTENNA = '#FFC84A';
+  const ANTENNA_DIM = '#9A7A3A';
+  const STALK = '#8790B0';
+  const FALLBACK = '#FF8A5B';
   const DIRS = ['down', 'up', 'left', 'right', 'downleft', 'downright', 'upleft', 'upright'];
   const FRAME_COUNTS = { idle: 2, walk: 4, work: 2, reach: 2, sit: 2, cheer: 2, carry: 4 };
   const EYES = ['open', 'blink', 'closed', 'x', 'happy'];
@@ -104,6 +113,30 @@
     return p;
   }
 
+  const botPaletteCache = new Map();
+  /**
+   * Robot shading derived from one agent colour via HSL: casing = the colour, top highlight and chest
+   * light pushed toward white, body and side faces darkened (a floor keeps very dark colours readable).
+   */
+  function botPalette(hex) {
+    const key = normHex(hex);
+    let p = botPaletteCache.get(key);
+    if (p) return p;
+    const c = rgbToHsl(hexToRgb(key));
+    const toWhite = (k) => hslToHex(c.h, c.s, c.l + (1 - c.l) * k);
+    const darker = (k, ds, floor) => hslToHex(c.h, clamp(c.s * ds, 0, 1), Math.max(floor, c.l * k));
+    p = {
+      head: key,
+      hi: toWhite(0.45),
+      side: darker(0.8, 0.95, 0.2),
+      body: darker(0.68, 0.72, 0.17),
+      bodySide: darker(0.52, 0.72, 0.13),
+      chest: toWhite(0.7)
+    };
+    botPaletteCache.set(key, p);
+    return p;
+  }
+
   // ------------------------------------------------------------------ canvas helpers
   function makeCanvas(w, h) {
     w = Math.max(1, Math.ceil(w)); h = Math.max(1, Math.ceil(h));
@@ -185,7 +218,7 @@
     return b;
   }
 
-  // ------------------------------------------------------------------ Clawd generator
+  // ------------------------------------------------------------------ robot generator
   /** View family + mirroring for each of the 8 facing directions. */
   function viewOf(dir) {
     switch (dir) {
@@ -210,41 +243,54 @@
   }
 
   /**
-   * Builds one Clawd frame. Body 14x9 block, two square eyes, arm nubs, four short legs,
-   * flat shading (light top/left, dark bottom/right) and a 1 px darker outline.
-   * dir: one of 8 directions. down = front, up = back (no eyes), left/right = side,
-   * downleft/downright = 3/4 front (eyes shifted), upleft/upright = 3/4 back. Left variants are mirrors.
+   * Screen layout per view, drawn facing right (left-facing variants are mirrors).
+   * s0..s1: screen columns; eyes: eye columns; hl: first column of the 2 px top highlight;
+   * flank: shaded side column of the casing (or -1); chest: chest light columns; stalk: antenna stalk column.
+   */
+  const VIEW_LAYOUT = {
+    front: { s0: 6, s1: 13, eyes: [8, 11], hl: 6, flank: -1, chest: [9, 10], stalk: 10 },
+    front34: { s0: 7, s1: 13, eyes: [9, 12], hl: 7, flank: 5, chest: [10, 11], stalk: 10 },
+    side: { s0: 10, s1: 13, eyes: [11, 13], hl: 6, flank: 5, chest: [12], stalk: 10 },
+    back: { s0: -1, s1: -1, eyes: [], hl: 6, flank: -1, chest: [], stalk: 9 },
+    back34: { s0: -1, s1: -1, eyes: [], hl: 6, flank: 14, chest: [], stalk: 9 }
+  };
+
+  /**
+   * Builds one robot frame: a 12x8 monitor head (casing in the agent colour, 2 px highlight, dark
+   * screen with two tall glowing eyes), a gold antenna, a darker body with a chest light, thin arms
+   * and two short ink legs, with a 1 px ink outline (4-neighbourhood, so corners come out rounded).
+   * dir: one of 8 directions. down = front, up = back of the head (casing panel + vents, no face),
+   * left/right = side (screen pushed to the front edge), downleft/downright = 3/4 front (face shifted,
+   * one flank in shade), upleft/upright = 3/4 back. Left variants are mirrors.
    * pose: idle | walk | work | reach | sit | cheer (both arms up) | carry (walking, arms steady holding an item).
    */
-  function buildClawd(color, pose, dir, frame, eyes) {
-    const pal = palette(color);
+  function buildRobot(color, pose, dir, frame, eyes) {
+    const pal = botPalette(color);
     const b = new PixelBuf(W, H);
     const view = viewOf(dir);
-    const side = view === 'side';
+    const L = VIEW_LAYOUT[view];
     const back = view === 'back' || view === 'back34';
     let bob = 0, armL = 0, armR = 0, raiseR = false, raiseL = false;
-    let lifted = [false, false, false, false];
+    let lifted = [false, false];
     const f = frame | 0;
 
     switch (pose) {
       case 'walk':
-        if ((f & 3) === 0) { lifted = [true, false, true, false]; armL = -1; armR = 1; }
-        else if ((f & 3) === 2) { lifted = [false, true, false, true]; armL = 1; armR = -1; }
+        if ((f & 3) === 0) { lifted = [true, false]; armL = -1; armR = 1; }
+        else if ((f & 3) === 2) { lifted = [false, true]; armL = 1; armR = -1; }
         else bob = 1;
         break;
       case 'carry':
-        if ((f & 3) === 0) lifted = [true, false, true, false];
-        else if ((f & 3) === 2) lifted = [false, true, false, true];
+        if ((f & 3) === 0) lifted = [true, false];
+        else if ((f & 3) === 2) lifted = [false, true];
         else bob = 1;
-        armL = armR = 1;
         break;
       case 'work':
-        armL = (f & 1) ? 1 : -2;
-        armR = (f & 1) ? -2 : 1;
+        armL = (f & 1) ? 0 : -1;
+        armR = (f & 1) ? -1 : 0;
         break;
       case 'reach':
         raiseR = true;
-        armL = 1;
         break;
       case 'cheer':
         raiseR = raiseL = true;
@@ -252,97 +298,126 @@
         break;
       case 'sit':
         bob = 2;
-        armL = armR = (f & 1);
+        armL = armR = -(f & 1);
         break;
       default:
         bob = f & 1;
     }
 
-    const bx = 3, bw = 14, bh = 9;
-    const by = 3 + bob;
+    const top = 3 + bob;          // head outline row
+    const hy = top + 1;           // first casing row
+    const sy = top + 2;           // first screen row (screen is 4 rows tall)
+    const ny = top + 8;           // neck row
+    const by = top + 9;           // first body row (body is 2 rows tall)
 
-    // Legs: four 2 px stumps; the walking pair lifts by one pixel.
-    const legX = [4, 7, 11, 14];
-    for (let i = 0; i < 4; i++) {
-      const top = by + bh;
-      const bottom = pose === 'sit' ? 14 : (lifted[i] ? 13 : 14);
-      for (let y = top; y <= bottom; y++) b.rect(legX[i], y, 2, 1, y === bottom ? pal.darker : pal.leg);
+    // Head casing.
+    b.rect(5, hy, 10, 6, pal.head);
+    b.rect(L.hl, hy, 2, 1, pal.hi);
+    if (L.flank >= 0) b.rect(L.flank, hy + 1, 1, 5, pal.side);
+    if (L.s0 >= 0) b.rect(L.s0, sy, L.s1 - L.s0 + 1, 4, SCREEN);
+    if (view === 'back') {
+      // Back of the monitor: a recessed panel with two vent slits.
+      b.rect(7, sy, 6, 4, pal.side);
+      b.rect(8, sy + 1, 4, 1, pal.body); b.rect(8, sy + 3, 4, 1, pal.body);
+    } else if (view === 'back34') {
+      b.rect(6, sy, 5, 4, pal.side);
+      b.rect(7, sy + 1, 3, 1, pal.body); b.rect(7, sy + 3, 3, 1, pal.body);
+    } else if (view === 'side') {
+      // Side of the casing: a small round bolt.
+      b.rect(7, sy + 1, 1, 2, pal.side);
     }
 
-    // Body block with flat pixel shading.
-    b.rect(bx, by, bw, bh, pal.base);
-    b.rect(bx, by, bw, 1, pal.light);
-    b.rect(bx, by + 1, 1, bh - 2, pal.light);
-    b.rect(bx + bw - 1, by + 1, 1, bh - 1, pal.dark);
-    b.rect(bx, by + bh - 1, bw, 1, pal.dark);
-    b.set(bx + 1, by + 1, pal.lighter);
-    b.set(bx + 2, by + 1, pal.light);
-    if (back) {
-      // Back view: a soft darker band suggests the rear of the block.
-      b.rect(bx + 2, by + bh - 3, bw - 4, 1, pal.dark);
-      if (view === 'back34') b.rect(bx + bw - 3, by + 2, 1, bh - 4, pal.dark);
-    } else if (view === 'front34') {
-      // 3/4 front: the far side of the block turns away into shadow.
-      b.rect(bx + 1, by + 2, 1, bh - 4, pal.dark);
+    // Neck and body.
+    b.rect(8, ny, 4, 1, pal.body);
+    b.rect(7, by, 6, 2, pal.body);
+    if (view === 'front34' || view === 'side') b.rect(7, by, 1, 2, pal.bodySide);
+    else if (view === 'back34') b.rect(12, by, 1, 2, pal.bodySide);
+    for (const cx of L.chest) b.set(cx, by, pal.chest);
+    if (back) b.rect(view === 'back' ? 9 : 8, by, 2, 1, pal.bodySide);
+
+    // Arms: thin 1 px arms hanging just under the head (they never reach the leg row, so the bot
+    // always stands on exactly two legs), or raised beside the head with the hand above it.
+    // off -1 folds the arm up to a single pixel (swing / typing), 0 lets it hang.
+    function arm(x, off) {
+      const len = off < 0 ? 1 : 2;
+      b.rect(x, ny, 1, len, pal.body);
+      b.set(x, ny + len - 1, pal.head);
+    }
+    function raised(x, toward) {
+      const hand = top - 1 + (f & 1);
+      b.rect(x, hand, 1, ny - hand + 1, pal.body);
+      b.set(x, hand, pal.head);
+      b.rect(Math.min(x + toward, x + 2 * toward), ny, 2, 1, pal.body);
+    }
+    if (raiseL) raised(3, 1); else arm(5, armL);
+    if (raiseR) raised(16, -1); else arm(14, armR);
+
+    b.outline(INK);
+
+    // Legs: ink stumps; the row under the body is their top, the gap between them stays open.
+    const legRow = by + 2;
+    if (legRow < H) {
+      b.rect(9, legRow, 2, 1, null);
+      const legX = [7, 11];
+      for (let i = 0; i < 2; i++) {
+        const bottom = lifted[i] ? legRow : H - 1;
+        for (let y = legRow; y <= bottom; y++) b.rect(legX[i], y, 2, 1, INK);
+      }
     }
 
-    // Arm nubs.
-    const armY = by + 3;
-    function arm(x, w, off) {
-      b.rect(x, armY + off, w, 1, pal.base);
-      b.rect(x, armY + off + 1, w, 1, pal.dark);
-    }
-    function raised(x) {
-      const top = by - 3 + (f & 1);
-      b.rect(x, top, 2, 1, pal.light);
-      b.rect(x, top + 1, 2, armY + 1 - top, pal.base);
-      b.rect(x + 1, top + 1, 1, armY + 1 - top, pal.dark);
-    }
-    const narrowFar = side || view === 'back34' || view === 'front34';
-    if (raiseL) raised(1);
-    else if (narrowFar) arm(2, 1, armL);   // far arm: a 1 px stub peeking out behind the body
-    else arm(1, 2, armL);
-    if (raiseR) raised(17);
-    else arm(17, 2, armR);
-
-    // Eyes (front, side and 3/4 front only).
+    // Face.
     if (!back) {
-      const ey = by + 2;
-      const xs = side ? [10, 14] : view === 'front34' ? [8, 13] : [6, 12];
-      for (const ex of xs) {
-        if (eyes === 'blink' || eyes === 'closed') {
-          b.rect(ex, ey + 1, 2, 1, EYE);
-        } else if (eyes === 'x') {
-          b.set(ex, ey, EYE); b.set(ex + 1, ey + 1, EYE);
-        } else if (eyes === 'happy') {
-          // ^ ^ : closed happy eyes.
-          b.set(ex, ey + 1, EYE); b.set(ex + 1, ey, EYE);
-        } else {
-          b.rect(ex, ey, 2, 2, EYE);
+      const e0 = sy + 1, e1 = sy + 2;
+      const xs = L.eyes;
+      if (eyes === 'x') {
+        for (const x of view === 'side' ? [11] : [L.s0, L.s1 - 2]) {
+          b.set(x, sy, EYE_ERR); b.set(x + 2, sy, EYE_ERR); b.set(x + 1, sy + 1, EYE_ERR);
+          b.set(x, sy + 2, EYE_ERR); b.set(x + 2, sy + 2, EYE_ERR);
+        }
+      } else if (eyes === 'closed') {
+        // Sleepy dashes, each eye stretched outward by one pixel.
+        xs.forEach((x, i) => {
+          const nx = i === 0 ? x - 1 : x + 1;
+          b.set(x, e1, EYE_DIM);
+          if (nx >= L.s0 && nx <= L.s1) b.set(nx, e1, EYE_DIM);
+        });
+      } else if (eyes === 'blink') {
+        for (const x of xs) b.set(x, e1, EYE);
+      } else {
+        for (const x of xs) { b.set(x, e0, EYE); b.set(x, e1, EYE); }
+        if (eyes === 'happy') {
+          const m = Math.round((xs[0] + xs[xs.length - 1]) / 2 - 0.5);
+          b.rect(view === 'side' ? 12 : m, sy + 3, 2, 1, EYE);
         }
       }
     }
 
+    // Antenna (no outline, like the site mascot): gold ball on a grey stalk.
+    const ball = eyes === 'x' ? EYE_ERR : eyes === 'closed' ? ANTENNA_DIM : ANTENNA;
+    b.set(L.stalk, top - 1, STALK);
+    b.rect(9, top - 2, 2, 1, ball);
+
     if (mirrored(dir)) b.mirror();
-    b.outline(pal.outline);
     return b;
   }
 
   const spriteCache = new Map();
 
-  /** Cached Clawd frame canvas (W x H) for a colour / pose / direction / frame / eyes combo. */
+  /** Cached robot frame canvas (W x H) for a colour / pose / direction / frame / eyes combo. */
   function get(color, pose, dir, frame, eyes) {
     const c = normHex(color);
     const p = FRAME_COUNTS[pose] ? pose : 'idle';
     const d = DIRS.indexOf(dir) >= 0 ? dir : 'down';
     const n = FRAME_COUNTS[p];
     const fr = (((frame | 0) % n) + n) % n;
-    const e = (d === 'up' || d === 'upleft' || d === 'upright') ? 'open' : (EYES.indexOf(eyes) >= 0 ? eyes : 'open');
+    const ey = EYES.indexOf(eyes) >= 0 ? eyes : 'open';
+    // Seen from behind there is no face; only the antenna colour still tells error / sleep apart.
+    const e = (d === 'up' || d === 'upleft' || d === 'upright') ? (ey === 'x' || ey === 'closed' ? ey : 'open') : ey;
     const key = c + '|' + p + '|' + d + '|' + fr + '|' + e;
     let cv = spriteCache.get(key);
     if (cv === undefined) {
       if (spriteCache.size > 9000) spriteCache.clear();
-      cv = buildClawd(c, p, d, fr, e).toCanvas();
+      cv = buildRobot(c, p, d, fr, e).toCanvas();
       spriteCache.set(key, cv);
     }
     return cv;
@@ -388,28 +463,30 @@
   /**
    * Where an item sits relative to the sprite's top-left corner (bob excluded) for a facing direction,
    * or null when hidden. Also says whether it is drawn behind the body. "lift" raises a mug to sip /
-   * bobs the marker toward the board.
+   * bobs the marker toward the board. Items are held low, at hand height, so the screen face stays
+   * visible. pose (optional) puts the marker in the raised hand for reach / cheer.
    */
-  function accessoryPlacement(name, dir, lift, color) {
+  function accessoryPlacement(name, dir, lift, color, pose) {
     const a = accessory(name, color);
     if (!a) return null;
     const view = viewOf(dir);
     const mir = mirrored(dir);
     const flip = (x) => (mir ? W - x - a.w : x);
+    const back = view === 'back' || view === 'back34';
     if (name === 'marker') {
-      if (view === 'back' || view === 'back34') return { x: flip(16), y: -4 + (lift ? 1 : 0), behind: true };
-      if (view === 'front') return { x: 17, y: 4, behind: false };
-      return { x: flip(17), y: 3, behind: false };
+      if (pose === 'reach' || pose === 'cheer') return { x: flip(15), y: -1 + (lift ? 1 : 0), behind: back };
+      return { x: flip(14), y: 8, behind: back };
     }
-    let y = name === 'mug' ? (lift ? 3 : 6) : (name === 'letter' || name === 'paper' ? 7 : 6);
-    if (view === 'back' || view === 'back34') {
+    // Bottom edge on (or one pixel past) the feet line, never higher than the screen's bottom row.
+    let y = name === 'mug' ? (lift ? 6 : 10) : clamp(17 - a.h, 8, 10);
+    if (back) {
       // Seen from behind: the item peeks out at the near hand, behind the body.
       if (name === 'mug' && lift) return null;
-      return { x: flip(view === 'back' ? 14 : 13), y: y + 1, behind: true };
+      return { x: flip(view === 'back' ? 14 : 13), y, behind: true };
     }
     if (view === 'front') return { x: Math.round(10 - a.w / 2) + (name === 'mug' ? 5 : 0), y, behind: false };
     if (view === 'front34') return { x: flip(Math.round(12 - a.w / 2) + (name === 'mug' ? 4 : 0)), y, behind: false };
-    return { x: flip(name === 'mug' ? 15 : 13), y: y - 1, behind: false };
+    return { x: flip(name === 'mug' ? 15 : 13), y, behind: false };
   }
 
   let shadowCanvas;
@@ -474,7 +551,7 @@
     const pose = o.pose || 'idle';
     const img = get(color, pose, dir, o.frame || 0, o.eyes || 'open');
     const accName = o.accessory && ACC_DEFS[o.accessory] ? o.accessory : null;
-    const place = accName ? accessoryPlacement(accName, dir, o.lift, color) : null;
+    const place = accName ? accessoryPlacement(accName, dir, o.lift, color, pose) : null;
     const acc = place ? accessory(accName, color) : null;
     const bob = bobOf(pose, o.frame || 0);
     if (acc && acc.img && place.behind) ctx.drawImage(acc.img, x0 + place.x, y0 + place.y + bob);
@@ -515,10 +592,11 @@
     else if (status === 'stopped') eyes = 'closed';
     else if (status === 'waiting') eyes = (frame % 6 === 5) ? 'blink' : 'open';
 
-    // Visible sprite rows are 2..15 plus the shadow; fit a 20x15 box with a small margin.
-    const scale = Math.max(1, Math.floor((px * 0.9) / W));
-    const ox = Math.round((px - W * scale) / 2);
-    const oy = Math.round((px - 15 * scale) / 2) - 2 * scale;
+    // The standing robot covers columns 3..16 and rows 1..15 (antenna to feet) plus the shadow down to
+    // row 16: fit that 14 x 16 box, centred.
+    const scale = Math.max(1, Math.floor((px * 0.94) / 16));
+    const ox = Math.round(px / 2 - 10 * scale);
+    const oy = Math.round(px / 2 - 8.5 * scale);
     ctx.save();
     ctx.translate(ox, oy);
     ctx.scale(scale, scale);
@@ -533,6 +611,7 @@
     spriteCache.clear();
     accCache.clear();
     paletteCache.clear();
+    botPaletteCache.clear();
     shadowCanvas = undefined;
     spotCanvas = undefined;
   }

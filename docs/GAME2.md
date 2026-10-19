@@ -52,7 +52,7 @@ New world methods:
 - Room choice uses §1 table (status overrides as today; interactive `waiting` → home desk idle with a "?" emote; the think rule stays:
   thinking keeps the character where it is). Dwell ≥ 2.5 s before leaving a room except for status changes.
 - Smoother movement: 8-direction walking with path smoothing (string-pulling on the A* path), slight acceleration, bob,
-  directional sprites (keep the Clawd look from sprites.js; add 3/4 diagonal frames or reuse left/right with offsets), shadow.
+  directional sprites (keep the robot look from sprites.js; add 3/4 diagonal frames or reuse left/right with offsets), shadow.
 - Items carried/used per pose: book (read), magnifier (search), laptop (bash/tests), letter (git → drops it in a mailbox), paper
   (write/edit), coffee mug (cafe), marker (board), globe/tablet (web). Draw them in sprites.js, cached per color.
 - Emotes (pixel icons above the head, pop animation, 1.5–3 s): 💡-style lightbulb when a tool starts after thinking, "!" on a new user

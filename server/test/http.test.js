@@ -10,7 +10,6 @@ const fakeClaude = { command: process.execPath, prefixArgs: [FAKE_CLAUDE], path:
 
 test('HTTP guards, static files and REST routes', async (t) => {
   const app = await startServer({
-    license: { bypass: true },
     port: 0,
     observe: false,
     publicDir: makePublicDir(),
@@ -139,13 +138,13 @@ test('HTTP guards, static files and REST routes', async (t) => {
     assert.equal(c.models[0].label, 'Par défaut');
     assert.deepEqual(c.permissionModes.find((p) => p.value === 'bypassPermissions'), { value: 'bypassPermissions', label: 'Tout autoriser (dangereux)', danger: true });
     assert.equal(c.colors.length, 12);
-    assert.equal(c.colors[0], '#D97757');
+    assert.equal(c.colors[0], '#FF8A5B');
     assert.equal(c.observe, false);
     assert.equal(typeof c.defaultCwd, 'string');
 
     const logs = await request(port, { path: '/api/agents/a99/logs', headers: auth });
     assert.equal(logs.status, 404);
-    assert.equal(logs.json.error, 'Agent introuvable.');
+    assert.equal(logs.json.error, 'Pix introuvable.');
     const del = await request(port, { method: 'DELETE', path: '/api/agents/a99', headers: auth });
     assert.equal(del.status, 404);
     const route = await request(port, { path: '/api/nimporte', headers: auth });
@@ -203,9 +202,9 @@ test('CLI argument parsing', () => {
 });
 
 test('busy port: the next free port is used', async (t) => {
-  const first = await startServer({ license: { bypass: true }, port: 0, observe: false, publicDir: makePublicDir(), claude: fakeClaude, skipVersion: true });
+  const first = await startServer({ port: 0, observe: false, publicDir: makePublicDir(), claude: fakeClaude, skipVersion: true });
   t.after(() => first.close());
-  const second = await startServer({ license: { bypass: true }, port: first.port, observe: false, publicDir: makePublicDir(), claude: fakeClaude, skipVersion: true });
+  const second = await startServer({ port: first.port, observe: false, publicDir: makePublicDir(), claude: fakeClaude, skipVersion: true });
   t.after(() => second.close());
   assert.notEqual(second.port, first.port);
   assert.ok(second.port > first.port && second.port <= first.port + 10);

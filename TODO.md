@@ -26,20 +26,21 @@ Liste notée le 19 octobre 2026. Ordre de la liste = ordre donné, pas une prior
 - [ ] **Version téléphone :** gérer tes agents depuis ton mobile quand le PC tourne chez toi.
   Note : demande un accès sécurisé de l'extérieur (authentification solide). Piste à étudier : la fonction Remote Control de Claude Code.
 
-## Site
-- [x] **Workshop communautaire (v1) :** page `workshop.html`, publication réservée aux acheteurs, commentaires. Fait le 19 octobre. Reste éventuellement : packs payants.
+## Communauté
+- [x] ~~**Workshop avec comptes**~~ Remplacé le 20 octobre par la communauté GitHub (Discussions, issues, pull requests).
 - [ ] **Shop communautaire de packs de skills et d'agents :** les gens publient leurs agents, gratuits ou payants, avec des commentaires. Il faudra des comptes utilisateurs, donc un vrai serveur et une base de données.
   On détaillera ensemble : modération, paiements, sécurité des packs.
 
 ## Licence et comptes
-- [x] **Licence liée à un compte :** connexion obligatoire dans l'appli, certificat signé par PC (3 PC par licence, valable 14 jours hors ligne), backend Supabase « pixelqg » (Paris). Fait le 19 octobre.
-- [ ] **Stripe (en dernier) :** lien de paiement à 10 €, webhook vers la fonction `stripe-webhook`, secret `STRIPE_WEBHOOK_SECRET`. En attendant, licences attribuées à la main depuis « Mon compte ».
-- [ ] **Créer ton compte administrateur** (gestion des comptes, licences et shop). Je te guiderai étape par étape. C'est toi qui créeras le compte et choisiras le mot de passe.
+- [x] ~~**Licence liée à un compte :** connexion obligatoire dans l'appli, certificat signé par PC (3 PC par licence, valable 14 jours hors ligne), backend Supabase « pixelqg » (Paris).~~ Abandonné le 20 octobre : PixelQG est maintenant gratuit et open source (licence MIT). La connexion et la licence ont été retirées de l'appli.
+- [x] ~~**Stripe (en dernier) :** lien de paiement à 10 €, webhook vers la fonction `stripe-webhook`, secret `STRIPE_WEBHOOK_SECRET`.~~ Abandonné le 20 octobre : PixelQG est gratuit et open source, il n'y a plus rien à payer.
+- [x] ~~**Lemon Squeezy :** autre solution de paiement.~~ Abandonné le 20 octobre, pour la même raison.
+- [x] ~~**Compte administrateur**~~ Abandonné le 20 octobre : plus de comptes, PixelQG est gratuit et open source.
 
 ## Lancement et pub
 - [ ] **Faire la pub de l'appli** une fois tout prêt. Je te guiderai : où publier (réseaux, communautés de devs, forums Claude Code), quels formats (la vidéo, des extraits courts, des captures) et quels messages.
 
 ## Déjà en place (pour mémoire)
 - Appli : bureau en pixel art (10 pièces, jour/nuit, niveaux, succès), lancement d'agents, terminal intégré qui relie les sessions `claude`, bibliothèque de dépôts GitHub de skills, `PixelQG.exe` sur le bureau.
-- Site de vente PixelQG en ligne sur https://pixelqg-site.pages.dev/ (Cloudflare Pages, gratuit), avec vidéo de démo navigable. À faire avant de vendre : lien de paiement Stripe dans `config.js`, mentions légales et CGV, zip de l'appli pour les acheteurs.
+- Site PixelQG en ligne sur https://pixelqg-site.pages.dev/ (Cloudflare Pages, gratuit) : page statique, gratuit et open source, sans comptes.
 - Code sur GitHub en privé : `hugobertagna/pixelqg-app` et `hugobertagna/pixelqg-site`. Serveurs MCP Supabase et Cloudflare branchés.

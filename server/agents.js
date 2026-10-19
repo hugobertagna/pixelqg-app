@@ -754,7 +754,7 @@ class StreamParser {
     }
     const patch = { status, endedAt: t };
     if (text && !rec.agent.resultText) patch.resultText = truncate(text, 2000);
-    if (status === 'error') patch.error = text ? truncate(oneLine(text), 500) : 'Le sous-agent a échoué.';
+    if (status === 'error') patch.error = text ? truncate(oneLine(text), 500) : 'Le sous-pix a échoué.';
     m._patch(subId, patch);
     if (status === 'done') m._setActivity(subId, 'done', LABELS.done, null, t);
     else if (status === 'error') m._setActivity(subId, 'error', LABELS.error, null, t);
@@ -1071,22 +1071,22 @@ class AgentManager extends EventEmitter {
   sendMessage(id, body) {
     const rec = this._mustGet(id);
     if (rec.agent.interactive || rec.agent.source === 'terminal') {
-      throw new HqError(409, 'Cet agent tourne dans un terminal : réponds-lui directement dans son terminal.');
+      throw new HqError(409, 'Ce pix tourne dans un terminal : réponds-lui directement dans son terminal.');
     }
     const prompt = validatePrompt(body && typeof body === 'object' ? body.prompt : undefined);
     const agent = rec.agent;
     if (agent.kind !== 'root') {
-      throw new HqError(409, "Seul l'agent principal peut recevoir un nouveau message.");
+      throw new HqError(409, 'Seul le pix principal peut recevoir un nouveau message.');
     }
     if (!agent.canControl || agent.source === 'observed') {
       throw new HqError(409, 'Cette session externe est seulement observée : impossible de lui écrire depuis PixelQG.');
     }
     const exiting = rec.proc && (rec.proc.resultSeen || rec.proc.stopRequested);
     if (ACTIVE_STATUSES.has(agent.status) || (rec.proc && !exiting) || rec.pendingTurn) {
-      throw new HqError(409, "L'agent travaille encore : attends la fin de son tour ou arrête-le.");
+      throw new HqError(409, 'Le pix travaille encore : attends la fin de son tour ou arrête-le.');
     }
     if (!agent.sessionId) {
-      throw new HqError(409, "Aucune session à reprendre : l'agent n'a pas encore de sessionId.");
+      throw new HqError(409, "Aucune session à reprendre : le pix n'a pas encore de sessionId.");
     }
     if (!this.ensureClaude()) {
       throw new HqError(503, "Claude Code est introuvable. Installe-le (npm install -g @anthropic-ai/claude-code) ou définis la variable d'environnement CLAUDE_BIN.");
@@ -1589,7 +1589,7 @@ class AgentManager extends EventEmitter {
 
   _mustGet(id) {
     const rec = this.records.get(id);
-    if (!rec) throw new HqError(404, 'Agent introuvable.');
+    if (!rec) throw new HqError(404, 'Pix introuvable.');
     return rec;
   }
 
@@ -1723,7 +1723,7 @@ class AgentManager extends EventEmitter {
       t,
       type: 'system',
       kind: 'task',
-      text: `Nouveau sous-agent : ${agent.name} (${agent.role})`,
+      text: `Nouveau sous-pix : ${agent.name} (${agent.role})`,
       detail: info.prompt ? truncate(info.prompt, 4000) : undefined,
     });
     return rec;
@@ -1870,7 +1870,7 @@ class AgentManager extends EventEmitter {
     for (const subId of this._subIdsOf(rec.agent.id)) {
       const sub = this.records.get(subId);
       if (sub && ACTIVE_STATUSES.has(sub.agent.status)) {
-        this._patch(subId, { status: 'error', error: "L'agent principal s'est arrêté.", endedAt: t });
+        this._patch(subId, { status: 'error', error: "Le pix principal s'est arrêté.", endedAt: t });
         this._setActivity(subId, 'error', LABELS.error, null, t);
       }
     }

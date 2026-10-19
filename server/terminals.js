@@ -4,6 +4,12 @@
 // ConPTY bridge (server/bin/hq-pty.exe), streamed to the page over WebSockets by server.js.
 // Typing `claude` in one of them runs the shim (server/shim/claude.cmd -> server/claude-shim.js),
 // which links the interactive Claude Code session to an agent of the office.
+//
+// macOS / Linux (experimental, never tested on a real Mac): the user's shell runs inside the
+// pseudo-terminal of the system `script` command. That mode cannot resize the pseudo-terminal, so
+// the shell waits (1 s at most) for the page's first size and keeps it. `claude` goes through
+// server/shim/claude (PATH) and, for bash and zsh, a shell function defined after the user's rc
+// files (server/shim/posix), so an rc file that reorders PATH cannot bypass the shim.
 
 const { EventEmitter } = require('node:events');
 const childProcess = require('node:child_process');
@@ -29,6 +35,13 @@ const SHIM_DIR = path.join(__dirname, 'shim');
 const SHIM_SCRIPT = path.join(__dirname, 'claude-shim.js');
 
 const SHELL = 'cmd.exe';
+const POSIX_PLATFORMS = new Set(['darwin', 'linux']);
+const SCRIPT_PATHS = ['/usr/bin/script', '/bin/script'];
+const POSIX_SHELLS = ['/bin/bash', '/bin/sh'];
+const POSIX_START_WAIT_MS = 1000;
+// Variables describing the terminal PixelQG itself was started from: wrong inside xterm.js.
+const POSIX_STRIPPED_ENV = ['TERM_PROGRAM', 'TERM_PROGRAM_VERSION', 'TERM_SESSION_ID', 'ITERM_SESSION_ID', 'COLUMNS', 'LINES'];
+const POSIX_NOTICE = 'Terminal expérimental (macOS / Linux) : sa taille est fixée à son ouverture. Après avoir agrandi la fenêtre, ouvre un nouveau terminal.';
 const MAX_TERMINALS = 8;
 const REPLAY_BYTES = 256 * 1024;
 const DEFAULT_COLS = 120;
@@ -71,6 +84,30 @@ function windowsBuild() {
 function systemShell() {
   const root = process.env.SystemRoot || process.env.WINDIR || 'C:\\Windows';
   return path.join(root, 'System32', SHELL);
+}
+
+function isExecutableFile(p) {
+  try {
+    if (!fs.statSync(p).isFile()) return false;
+    fs.accessSync(p, fs.constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** macOS / Linux: the user's shell ($SHELL), else /bin/bash, else /bin/sh. Null when none runs. */
+function findPosixShell(env = process.env) {
+  const given = String(env.SHELL || '').trim();
+  const candidates = [];
+  if (given.startsWith('/') && !/(^|\/)(false|nologin)$/.test(given)) candidates.push(given);
+  candidates.push(...POSIX_SHELLS);
+  return candidates.find(isExecutableFile) || null;
+}
+
+/** Single-quotes a word for a POSIX shell command line. */
+function shQuote(s) {
+  return `'${String(s).replace(/'/g, `'\\''`)}'`;
 }
 
 function findCsc() {
@@ -131,6 +168,9 @@ class TerminalManager extends EventEmitter {
    * @param {number} [opts.replayBytes=262144]
    * @param {Function} [opts.spawn] child_process.spawn replacement (tests)
    * @param {{pluginDir: string}|null} [opts.library] skills library (PIXELQG_PLUGIN_DIR for the shim)
+   * @param {string} [opts.scriptPath] macOS / Linux: the `script` command (default /usr/bin/script)
+   * @param {string} [opts.shellPath] macOS / Linux: the shell (default $SHELL, /bin/bash, /bin/sh)
+   * @param {number} [opts.posixStartWaitMs=1000] macOS / Linux: wait for the page's first size
    */
   constructor(opts) {
     super();
@@ -147,6 +187,11 @@ class TerminalManager extends EventEmitter {
     this.replayBytes = opts.replayBytes || REPLAY_BYTES;
     this.spawnFn = typeof opts.spawn === 'function' ? opts.spawn : childProcess.spawn;
     this.library = opts.library || null;
+    this.posix = this.platform !== 'win32';
+    this.scriptPath = opts.scriptPath || null;
+    this.shellPath = this.posix ? opts.shellPath || findPosixShell() : systemShell();
+    this.shellName = this.posix ? path.basename(this.shellPath || '/bin/sh') : SHELL;
+    this.posixStartWaitMs = Number.isFinite(opts.posixStartWaitMs) ? opts.posixStartWaitMs : POSIX_START_WAIT_MS;
 
     this.supported = false;
     this.reason = 'Préparation du terminal intégré…';
@@ -200,8 +245,8 @@ class TerminalManager extends EventEmitter {
       this.supported = false;
       this.reason = reason;
     };
-    if (this.platform !== 'win32') {
-      unsupported('Le terminal intégré n’est disponible que sous Windows pour le moment.');
+    if (this.posix) {
+      this._initPosix(unsupported);
       return;
     }
     if (windowsBuild() < MIN_WINDOWS_BUILD) {
@@ -241,9 +286,40 @@ class TerminalManager extends EventEmitter {
     this.reason = null;
   }
 
+  /** macOS / Linux: needs the `script` command, a shell and the POSIX shim. */
+  _initPosix(unsupported) {
+    if (!POSIX_PLATFORMS.has(this.platform)) {
+      unsupported('Le terminal intégré n’est disponible que sous Windows, macOS et Linux.');
+      return;
+    }
+    const script = this.scriptPath ? (isExecutableFile(this.scriptPath) ? this.scriptPath : null) : SCRIPT_PATHS.find(isExecutableFile);
+    if (!script) {
+      unsupported('Le terminal intégré a besoin de la commande « script » (fournie avec macOS, et avec util-linux sous Linux) : introuvable sur cet ordinateur.');
+      return;
+    }
+    if (!this.shellPath) {
+      unsupported('Aucun shell utilisable trouvé (variable SHELL, /bin/bash ou /bin/sh).');
+      return;
+    }
+    const posixShim = path.join(this.shimDir, 'claude');
+    if (!fs.existsSync(this.shimScript) || !fs.existsSync(posixShim)) {
+      unsupported('Fichiers du terminal intégré manquants (server/shim/claude ou server/claude-shim.js).');
+      return;
+    }
+    // A zip or a Windows checkout may have lost the executable bit of the shim.
+    try {
+      fs.chmodSync(posixShim, 0o755);
+    } catch {
+      /* read-only folder: bash and zsh still route `claude` through their shell function */
+    }
+    this.scriptPath = script;
+    this.supported = true;
+    this.reason = null;
+  }
+
   /** config.terminal */
   config() {
-    return { supported: this.supported, reason: this.supported ? null : this.reason, shell: SHELL };
+    return { supported: this.supported, reason: this.supported ? null : this.reason, shell: this.shellName };
   }
 
   /** @returns {object[]} every terminal, in creation order */
@@ -320,7 +396,7 @@ class TerminalManager extends EventEmitter {
       id,
       title: `Terminal ${this.counter}`,
       cwd,
-      shell: SHELL,
+      shell: this.shellName,
       status: 'running',
       exitCode: null,
       createdAt: now,
@@ -344,12 +420,31 @@ class TerminalManager extends EventEmitter {
       killed: false,
       exited: false,
       exitPromise: null,
+      startTimer: null,
       launch: launchClaude ? { text: ['claude', ...claudeArgs].join(' ') + '\r', timer: null } : null,
     };
+    rec.exitPromise = new Promise((resolve) => {
+      rec.resolveExit = resolve;
+    });
     this.records.set(id, rec);
-    this._spawn(rec);
+    if (this.posix) {
+      // `script` cannot resize its pseudo-terminal later: start with the page's first size.
+      this._appendNotice(rec, POSIX_NOTICE);
+      rec.startTimer = setTimeout(() => this._startNow(rec), this.posixStartWaitMs);
+      rec.startTimer.unref();
+    } else {
+      this._spawn(rec);
+    }
     this._emitTerminal(rec);
     return terminal;
+  }
+
+  /** macOS / Linux: starts a terminal whose shell was waiting for its first size. */
+  _startNow(rec) {
+    if (!rec.startTimer) return;
+    clearTimeout(rec.startTimer);
+    rec.startTimer = null;
+    if (!rec.exited) this._spawn(rec);
   }
 
   _env(rec) {
@@ -378,7 +473,43 @@ class TerminalManager extends EventEmitter {
       env.PIXELQG_REAL_CLAUDE = claude.command;
       if (claude.prefixArgs && claude.prefixArgs.length) env.PIXELQG_REAL_PREFIX = JSON.stringify(claude.prefixArgs);
     }
+    if (this.posix) this._posixEnv(env);
     return env;
+  }
+
+  /** macOS / Linux: terminal type of xterm.js, UTF-8, and zsh's startup wrapper (server/shim/posix/zsh). */
+  _posixEnv(env) {
+    for (const k of POSIX_STRIPPED_ENV) delete env[k];
+    env.TERM = 'xterm-256color';
+    env.COLORTERM = 'truecolor';
+    env.SHELL = this.shellPath; // util-linux `script -c` runs its command with $SHELL
+    if (!env.LANG && !env.LC_ALL && !env.LC_CTYPE) env.LANG = this.platform === 'darwin' ? 'en_US.UTF-8' : 'C.UTF-8';
+    const zshDir = path.join(this.shimDir, 'posix', 'zsh');
+    if (this.shellName === 'zsh' && fs.existsSync(path.join(zshDir, '.zshrc'))) {
+      env.PIXELQG_USER_ZDOTDIR = process.env.ZDOTDIR || '';
+      env.ZDOTDIR = zshDir;
+    }
+  }
+
+  /**
+   * macOS / Linux: arguments of the `script` command. The inner /bin/sh sets the pseudo-terminal
+   * size (its only chance: `script` has no resize), then becomes the user's shell.
+   *   macOS:  script -q /dev/null /bin/sh -c '<inner>'
+   *   Linux:  script -qefc '<inner>' /dev/null   (-e: exit code of the shell, -f: flush at once)
+   */
+  _posixArgs(rec) {
+    const t = rec.terminal;
+    const shellArgs = [this.shellPath];
+    const bashrc = path.join(this.shimDir, 'posix', 'bashrc');
+    if (this.shellName === 'bash' && fs.existsSync(bashrc)) shellArgs.push('--rcfile', bashrc);
+    const inner = `stty cols ${t.cols} rows ${t.rows} 2>/dev/null; exec ${shellArgs.map(shQuote).join(' ')}`;
+    if (this.platform === 'linux') return ['-qefc', inner, '/dev/null'];
+    return ['-q', '/dev/null', '/bin/sh', '-c', inner];
+  }
+
+  /** What a keystroke becomes on the child's stdin: a bridge frame (Windows) or raw bytes. */
+  _inputChunk(text) {
+    return this.posix ? Buffer.from(text, 'utf8') : frame(FRAME_INPUT, text);
   }
 
   /**
@@ -394,17 +525,19 @@ class TerminalManager extends EventEmitter {
 
   _spawn(rec) {
     const t = rec.terminal;
-    const args = ['--cols', String(t.cols), '--rows', String(t.rows), '--cwd', t.cwd, '--cmd', this._commandLine()];
+    const file = this.posix ? this.scriptPath : this.bridgePath;
+    const args = this.posix
+      ? this._posixArgs(rec)
+      : ['--cols', String(t.cols), '--rows', String(t.rows), '--cwd', t.cwd, '--cmd', this._commandLine()];
     let child;
-    rec.exitPromise = new Promise((resolve) => {
-      rec.resolveExit = resolve;
-    });
     try {
-      child = this.spawnFn(this.bridgePath, args, {
+      child = this.spawnFn(file, args, {
         cwd: t.cwd,
         env: this._env(rec),
         windowsHide: true,
         stdio: ['pipe', 'pipe', 'pipe'],
+        // macOS / Linux: own process group, so a Ctrl+C in the window running PixelQG never reaches it.
+        detached: this.posix,
       });
     } catch (err) {
       this._appendNotice(rec, `Impossible de lancer le terminal : ${err && err.message ? err.message : err}`);
@@ -421,7 +554,8 @@ class TerminalManager extends EventEmitter {
     });
     child.on('error', (err) => {
       if (!child.pid) {
-        this._appendNotice(rec, `Impossible de lancer le terminal : ${err.code === 'ENOENT' ? 'hq-pty.exe introuvable' : err.message}`);
+        const missing = this.posix ? 'commande « script » introuvable' : 'hq-pty.exe introuvable';
+        this._appendNotice(rec, `Impossible de lancer le terminal : ${err.code === 'ENOENT' ? missing : err.message}`);
         this._onExit(rec, null);
       }
     });
@@ -440,7 +574,7 @@ class TerminalManager extends EventEmitter {
     if (!launch) return;
     rec.launch = null;
     if (launch.timer) clearTimeout(launch.timer);
-    this._send(rec, frame(FRAME_INPUT, launch.text));
+    this._send(rec, this._inputChunk(launch.text));
   }
 
   _send(rec, buf) {
@@ -453,13 +587,14 @@ class TerminalManager extends EventEmitter {
     }
   }
 
-  _onOutput(rec, text) {
+  /** @param {boolean} [fromShell=true] false for PixelQG's own notices (the shell may not be up yet) */
+  _onOutput(rec, text, fromShell = true) {
     if (!text) return;
     rec.chunks.push(text);
     rec.bytes += Buffer.byteLength(text, 'utf8');
     this._trimReplay(rec);
     this.emit('output', { id: rec.terminal.id, data: text });
-    if (rec.launch) this._launchClaude(rec); // the shell is up: type `claude`
+    if (fromShell && rec.launch) this._launchClaude(rec); // the shell is up: type `claude`
   }
 
   _trimReplay(rec) {
@@ -484,16 +619,20 @@ class TerminalManager extends EventEmitter {
 
   /** Writes a dim French notice into the terminal output (bridge errors). */
   _appendNotice(rec, message) {
-    this._onOutput(rec, `\r\n\x1b[2m[PixelQG] ${message}\x1b[0m\r\n`);
+    this._onOutput(rec, `\r\n\x1b[2m[PixelQG] ${message}\x1b[0m\r\n`, false);
   }
 
   _onExit(rec, code) {
     if (rec.exited) return;
     rec.exited = true;
+    if (rec.startTimer) clearTimeout(rec.startTimer);
+    rec.startTimer = null;
     if (rec.launch && rec.launch.timer) clearTimeout(rec.launch.timer);
     rec.launch = null;
     const t = rec.terminal;
-    if (!rec.killed && typeof code === 'number' && code >= 90 && code <= 99) {
+    // Bridge errors (90-99) on Windows; on macOS / Linux, whatever `script` said before failing.
+    const failed = this.posix ? typeof code === 'number' && code !== 0 : typeof code === 'number' && code >= 90 && code <= 99;
+    if (!rec.killed && failed) {
       const msg = rec.stderr.trim().split(/\r?\n/).pop();
       if (msg) this._appendNotice(rec, msg);
     }
@@ -518,16 +657,27 @@ class TerminalManager extends EventEmitter {
   write(id, data) {
     const rec = this._mustGet(id);
     if (typeof data !== 'string' || !data) return false;
-    return this._send(rec, frame(FRAME_INPUT, data));
+    return this._send(rec, this._inputChunk(data));
   }
 
-  /** Resizes the pseudoconsole (cols clamped to 20–400, rows to 5–200). */
+  /**
+   * Resizes the pseudoconsole (cols clamped to 20–400, rows to 5–200).
+   * macOS / Linux: only the first size counts (it starts the shell); later sizes are ignored.
+   */
   resize(id, cols, rows) {
     const rec = this._mustGet(id);
     if (!Number.isFinite(cols) || !Number.isFinite(rows)) return false;
     const c = clamp(cols, COLS_RANGE);
     const r = clamp(rows, ROWS_RANGE);
     if (rec.terminal.status !== 'running') return false;
+    if (this.posix) {
+      if (!rec.startTimer) return false;
+      rec.terminal.cols = c;
+      rec.terminal.rows = r;
+      this._startNow(rec);
+      this._emitTerminal(rec);
+      return true;
+    }
     if (c === rec.terminal.cols && r === rec.terminal.rows) return true;
     const payload = Buffer.allocUnsafe(4);
     payload.writeUInt16LE(c, 0);
@@ -548,6 +698,12 @@ class TerminalManager extends EventEmitter {
   _kill(rec) {
     if (rec.exited) return Promise.resolve();
     rec.killed = true;
+    if (rec.startTimer || !rec.child) {
+      // macOS / Linux terminal whose shell has not started yet.
+      this._onExit(rec, null);
+      return rec.exitPromise;
+    }
+    if (this.posix) return this._killPosix(rec);
     if (!this._send(rec, frame(FRAME_TERMINATE))) {
       try {
         rec.child.kill();
@@ -565,6 +721,24 @@ class TerminalManager extends EventEmitter {
         }
       }
     }, KILL_GRACE_MS);
+    force.unref();
+    return rec.exitPromise.then(() => clearTimeout(force));
+  }
+
+  /**
+   * macOS / Linux: SIGKILL to `script`. The kernel then hangs up its pseudo-terminal, exactly like
+   * closing a terminal window: the shell, Claude Code and their jobs get SIGHUP. (Gentler signals do
+   * not work: util-linux `script` ignores SIGHUP and hands SIGTERM to the shell, which ignores it
+   * when interactive; checked with util-linux 2.37.)
+   */
+  _killPosix(rec) {
+    try {
+      rec.child.kill('SIGKILL');
+    } catch {
+      /* already gone */
+    }
+    // A program that kept a copy of the output pipe would delay 'close' forever.
+    const force = setTimeout(() => this._onExit(rec, null), KILL_GRACE_MS);
     force.unref();
     return rec.exitPromise.then(() => clearTimeout(force));
   }
@@ -613,12 +787,16 @@ class TerminalManager extends EventEmitter {
     return Promise.race([Promise.all(waits), timeout]);
   }
 
-  /** Last-resort synchronous kill (process 'exit' handler): the job objects take the trees down. */
+  /**
+   * Last-resort synchronous kill (process 'exit' handler): the job objects take the trees down
+   * (Windows); on macOS / Linux the hang-up of each pseudo-terminal does.
+   */
   killAllSync() {
     for (const rec of this.records.values()) {
+      if (rec.startTimer) clearTimeout(rec.startTimer);
       if (!rec.exited && rec.child) {
         try {
-          rec.child.kill();
+          rec.child.kill(this.posix ? 'SIGKILL' : 'SIGTERM');
         } catch {
           /* ignore */
         }

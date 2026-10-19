@@ -57,6 +57,40 @@
     ctx.fillRect(x, y, w, h);
   }
 
+  // ------------------------------------------------------------------ PixelQG robot pixel maps
+  // A antenna ball, G stalk, K ink, C casing, H casing highlight, S screen, E eye, D body, L chest light.
+  /** Full mascot, 12 x 15 (same pixels as the site's screen-headed office bot). */
+  const BOT_BIG = [
+    '.....AA.....', '......G.....', '..KKKKKKKK..', '.KCHHCCCCCK.', '.KCSSSSSSCK.',
+    '.KCSESSESCK.', '.KCSESSESCK.', '.KCSSSSSSCK.', '.KCCCCCCCCK.', '..KKKKKKKK..',
+    '...KDDDDK...', '..KDDLLDDK..', '..KDDDDDDK..', '...KK..KK...', '...KK..KK...'
+  ];
+  /** Outline-free 10 x 10 version for posters. */
+  const BOT_SMALL = [
+    '....AA....', '.....G....', '.CHHCCCCC.', '.CSSSSSSC.', '.CSESSESC.',
+    '.CSESSESC.', '.CCCCCCCC.', '...DDDD...', '..DDLLDD..', '...K..K...'
+  ];
+  /** 7 x 8 version for the lobby sign. */
+  const BOT_TINY = ['...A...', '...G...', 'CHCCCCC', 'CSESESC', 'CSESESC', 'CCCCCCC', '..DDD..', '..K.K..'];
+  /** 8 x 8 silhouette for a locked desk screen. */
+  const BOT_LOCK = ['...AA...', '....A...', 'CCCCCCCC', 'C.E..E.C', 'C.E..E.C', 'CCCCCCCC', '..CCCC..', '..C..C..'];
+  const BOT_COLORS = {
+    A: '#FFC84A', G: '#8790B0', K: '#0A0B16', C: '#4FE3D3', H: '#9EF0E7', S: '#141A33', E: '#A6FFF2',
+    D: '#369A8F', L: '#CAF7F2'
+  };
+
+  /** Paints a robot map at (x, y), s px per cell; colours default to the cyan brand bot. */
+  function paintBot(c, map, x, y, s, colors) {
+    const pal = colors ? Object.assign({}, BOT_COLORS, colors) : BOT_COLORS;
+    for (let j = 0; j < map.length; j++) {
+      const row = map[j];
+      for (let i = 0; i < row.length; i++) {
+        const col = row[i] === '.' ? null : pal[row[i]];
+        if (col) px(c, x + i * s, y + j * s, s, s, col);
+      }
+    }
+  }
+
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 
   // ------------------------------------------------------------------ colours
@@ -223,10 +257,10 @@
   const ROOM_DEFS = [
     { id: 'lobby', label: "Hall d'entrée", sign: "HALL D'ENTRÉE", short: 'HALL', x: 16, y: 24, w: 22, h: 14, floor: 'marble', accent: '#F2C14E',
       wall: { face: '#6B4E3A', low: '#4E3828', trim: '#9A7656', pattern: 'wood' }, signAt: { cx: 21.5 * T, row: 22 }, gather: { x: 26, y: 27 },
-      blurb: "Le hall : les agents arrivent par l'ascenseur et repartent par là quand tu les retires." },
-    { id: 'open', label: 'Open space', sign: 'OPEN SPACE', short: 'OPEN SPACE', x: 16, y: 2, w: 22, h: 20, floor: 'wood', accent: '#D97757',
+      blurb: "Le hall : les pix arrivent par l'ascenseur et repartent par là quand tu les retires." },
+    { id: 'open', label: 'Open space', sign: 'OPEN SPACE', short: 'OPEN SPACE', x: 16, y: 2, w: 22, h: 20, floor: 'wood', accent: '#FF8A5B',
       wall: { face: '#5A5078', low: '#433B5E', trim: '#7E74A2', pattern: 'stripe' }, signAt: { cx: 27 * T, row: 0 }, gather: { x: 26, y: 18 },
-      blurb: "L'open space : chaque agent a son bureau pour écrire, modifier du code et réfléchir." },
+      blurb: "L'open space : chaque pix a son bureau pour écrire, modifier du code et réfléchir." },
     { id: 'library', label: 'Bibliothèque', sign: 'BIBLIOTHÈQUE', short: 'BIBLIO', x: 1, y: 2, w: 14, h: 10, floor: 'carpet', accent: '#7BC67E',
       wall: { face: '#3F5B4D', low: '#2E4439', trim: '#6E8C70', pattern: 'wood' }, signAt: { cx: 8 * T, row: 0 }, gather: { x: 7, y: 10 },
       blurb: 'La bibliothèque : on y lit des fichiers et on cherche dans le code. Tes dépôts liés sont rangés sur les étagères.' },
@@ -244,13 +278,13 @@
       blurb: 'Le labo web : recherches sur internet, pages consultées et outils MCP, en direct sur la carte du monde.' },
     { id: 'meeting', label: 'Salle de réunion', sign: 'SALLE DE RÉUNION', short: 'RÉUNION', x: 1, y: 14, w: 14, h: 10, floor: 'meeting', accent: '#B48EE0',
       wall: { face: '#4C4766', low: '#3A3652', trim: '#6E6696', pattern: 'stripe' }, signAt: { cx: 6.5 * T, row: 12 }, gather: { x: 7, y: 22 },
-      blurb: 'La salle de réunion : délégation aux sous-agents et organisation des tâches autour de la grande table.' },
+      blurb: 'La salle de réunion : délégation aux sous-pix et organisation des tâches autour de la grande table.' },
     { id: 'cafe', label: 'Cafétéria', sign: 'CAFÉTÉRIA', short: 'CAFÉ', x: 1, y: 26, w: 14, h: 12, floor: 'cafe', accent: '#E8955A',
       wall: { face: '#C9B79C', low: '#9E8A6E', trim: '#E6D8BE', pattern: 'tile' }, signAt: { cx: 6 * T, row: 24 }, gather: { x: 7, y: 32 },
-      blurb: 'La cafétéria : les agents qui ont fini ou qui sont en pause viennent boire un café et jouer au baby-foot.' },
+      blurb: 'La cafétéria : les pix qui ont fini ou qui sont en pause viennent boire un café et jouer au baby-foot.' },
     { id: 'terrace', label: 'Terrasse', sign: 'TERRASSE', short: 'TERRASSE', x: 39, y: 4, w: 24, h: 7, floor: 'deck', accent: '#C9D86B', outdoor: true,
       wall: { face: '#5A5078', low: '#433B5E', trim: '#7E74A2', pattern: 'stripe' }, signAt: null, gather: { x: 50, y: 9 },
-      blurb: "La terrasse : un coin au grand air, avec le ciel qui suit l'heure de la journée, pour les agents qui attendent." }
+      blurb: "La terrasse : un coin au grand air, avec le ciel qui suit l'heure de la journée, pour les pix qui attendent." }
   ];
 
   /** Named spots: tile, facing, the pose played on arrival and an optional carried item. */
@@ -484,7 +518,7 @@
     { kind: 'clock', x: 22, y: 1, w: 1 },
     { kind: 'kanban', x: 23, y: 1, w: 3 },
     { kind: 'window', x: 27, y: 1, w: 2 },
-    { kind: 'poster', x: 30, y: 1, w: 1, art: 'clawd' },
+    { kind: 'poster', x: 30, y: 1, w: 1, art: 'robot' },
     { kind: 'window', x: 32, y: 1, w: 2 },
     { kind: 'poster', x: 35, y: 1, w: 1, art: 'cat' },
     // Meeting room
@@ -1360,12 +1394,10 @@
     poster(c, d) {
       const x = d.x * T + 3, y = d.y * T + 2;
       px(c, x - 1, y - 1, 12, 12, '#1E1F2C');
-      if (d.art === 'clawd') {
-        px(c, x, y, 10, 10, '#F3E9D2');
-        px(c, x + 2, y + 3, 6, 4, '#D97757'); px(c, x + 1, y + 4, 1, 2, '#D97757'); px(c, x + 8, y + 4, 1, 2, '#D97757');
-        px(c, x + 3, y + 4, 1, 1, '#1E1F2C'); px(c, x + 6, y + 4, 1, 1, '#1E1F2C');
-        px(c, x + 2, y + 7, 1, 2, '#D97757'); px(c, x + 4, y + 7, 1, 2, '#D97757'); px(c, x + 5, y + 7, 1, 2, '#D97757'); px(c, x + 7, y + 7, 1, 2, '#D97757');
-        px(c, x + 1, y + 1, 8, 1, '#E8C9A0');
+      if (d.art === 'robot') {
+        // PixelQG mascot poster.
+        px(c, x, y, 10, 10, '#3B3F6B');
+        paintBot(c, BOT_SMALL, x, y, 1);
       } else if (d.art === 'cat') {
         px(c, x, y, 10, 10, '#5BA4E6');
         px(c, x + 2, y + 3, 6, 5, '#F2C14E'); px(c, x + 2, y + 2, 1, 1, '#F2C14E'); px(c, x + 7, y + 2, 1, 1, '#F2C14E');
@@ -1414,11 +1446,8 @@
     logo(c, d) {
       const x = d.x * T, y = d.y * T, w = d.w * T;
       px(c, x + 2, y + 2, w - 4, 10, '#3A2A1E'); px(c, x + 3, y + 3, w - 6, 8, '#4A3626');
-      // Small Clawd + "PIXELQG" in gold letters.
-      const gx = x + 5, gy = y + 5;
-      px(c, gx, gy, 6, 3, '#D97757'); px(c, gx - 1, gy + 1, 1, 1, '#D97757'); px(c, gx + 6, gy + 1, 1, 1, '#D97757');
-      px(c, gx + 1, gy + 1, 1, 1, '#1E1F2C'); px(c, gx + 4, gy + 1, 1, 1, '#1E1F2C');
-      px(c, gx, gy + 3, 1, 1, '#D97757'); px(c, gx + 2, gy + 3, 1, 1, '#D97757'); px(c, gx + 3, gy + 3, 1, 1, '#D97757'); px(c, gx + 5, gy + 3, 1, 1, '#D97757');
+      // Small PixelQG robot + "PIXELQG" in gold letters.
+      paintBot(c, BOT_TINY, x + 5, y + 3, 1);
       drawPixelText(c, 'PIXELQG', x + 14, y + 5, '#F2C14E', 1);
       px(c, x + 14, y + 11, measurePixelText('PIXELQG'), 1, '#8A6A3A');
     },
@@ -1539,14 +1568,9 @@
       const x = f.x * T + 2, y = f.y * T + 2, w = f.w * T - 4, h = f.h * T - 4;
       px(c, x, y, w, h, '#C9A15C'); px(c, x + 1, y + 1, w - 2, h - 2, '#2C2A3E'); px(c, x + 3, y + 3, w - 6, h - 6, '#C9A15C');
       px(c, x + 4, y + 4, w - 8, h - 8, '#3A3650');
-      // Big Clawd mosaic in the middle of the hall.
-      const s = 3, bw = 14, cx = x + Math.round((w - bw * s) / 2), cy = y + 12;
-      px(c, cx, cy, bw * s, 8 * s, '#D97757');
-      px(c, cx, cy, bw * s, s, '#E89A7E');
-      px(c, cx - 2 * s, cy + 3 * s, 2 * s, 2 * s, '#D97757'); px(c, cx + bw * s, cy + 3 * s, 2 * s, 2 * s, '#D97757');
-      px(c, cx + 3 * s, cy + 2 * s, 2 * s, 2 * s, '#14151F'); px(c, cx + 9 * s, cy + 2 * s, 2 * s, 2 * s, '#14151F');
-      for (const lx of [1, 4, 9, 12]) px(c, cx + lx * s, cy + 8 * s, s, 2 * s, '#B85E40');
-      px(c, cx, cy + 7 * s, bw * s, s, '#B85E40');
+      // Big PixelQG robot mosaic in the middle of the hall (12 x 15 tiles of 3 px).
+      const s = 3, bw = BOT_BIG[0].length, cx = x + Math.round((w - bw * s) / 2), cy = y + 7;
+      paintBot(c, BOT_BIG, cx, cy, s, { K: '#1E1C2C', S: '#232A4A' });
       const label = 'QG';
       drawPixelText(c, label, x + Math.round((w - measurePixelText(label) * 2) / 2), y + h - 16, '#C9A15C', 2);
       for (let k = 0; k < 4; k++) {
@@ -2183,10 +2207,10 @@
         const ph = Math.floor(t * 3) % 4;
         for (let k = 0; k < 3; k++) px(ctx, sx + 3 + k * 3, sy + 5, 2, 2, k < ph ? (d.shadeLite || '#C9D3F5') : '#2C3760');
       } else if (d.owner !== null && d.color) {
-        // Owner away: lock screen with a tiny Clawd in the owner's colour.
+        // Owner away: lock screen with a tiny robot in the owner's colour.
         px(ctx, sx, sy, 14, 10, '#0E1220');
-        px(ctx, sx + 4, sy + 3, 6, 3, d.shadeDark || '#3A4060'); px(ctx, sx + 5, sy + 4, 1, 1, '#0E1220'); px(ctx, sx + 8, sy + 4, 1, 1, '#0E1220');
-        px(ctx, sx + 4, sy + 6, 1, 1, d.shadeDark || '#3A4060'); px(ctx, sx + 9, sy + 6, 1, 1, d.shadeDark || '#3A4060');
+        const dark = d.shadeDark || '#3A4060';
+        paintBot(ctx, BOT_LOCK, sx + 3, sy + 1, 1, { A: dark, C: dark, E: d.color });
       } else {
         px(ctx, it.x + 16, it.y + 10, 1, 1, Math.floor(t * 0.8 + it.f.desk) % 2 ? '#F2A35A' : '#5A3A20');
       }
@@ -2631,11 +2655,11 @@
     if (!sc || this.amb.meeting.occ <= 0) return;
     const slide = Math.floor(t / 4) % 3;
     px(ctx, sc.x, sc.y, sc.w, sc.h, '#F4F6FB');
-    px(ctx, sc.x, sc.y, sc.w, 2, ['#B48EE0', '#5BA4E6', '#D97757'][slide]);
+    px(ctx, sc.x, sc.y, sc.w, 2, ['#B48EE0', '#5BA4E6', '#FF8A5B'][slide]);
     if (slide === 0) {
       for (let k = 0; k < 6; k++) px(ctx, sc.x + 4 + k * 8, sc.y + sc.h - 1 - (2 + ((k * 5) % 7)), 5, 2 + ((k * 5) % 7), k % 2 ? '#5BA4E6' : '#B48EE0');
     } else if (slide === 1) {
-      for (let k = 0; k < 3; k++) { px(ctx, sc.x + 3, sc.y + 4 + k * 2, 2, 1, '#D97757'); px(ctx, sc.x + 7, sc.y + 4 + k * 2, 18 + k * 7, 1, '#6A6F86'); }
+      for (let k = 0; k < 3; k++) { px(ctx, sc.x + 3, sc.y + 4 + k * 2, 2, 1, '#FF8A5B'); px(ctx, sc.x + 7, sc.y + 4 + k * 2, 18 + k * 7, 1, '#6A6F86'); }
     } else {
       px(ctx, sc.x + 6, sc.y + 4, 9, 5, '#7BC67E'); px(ctx, sc.x + 15, sc.y + 6, 10, 1, '#6A6F86'); px(ctx, sc.x + 25, sc.y + 4, 9, 5, '#F2C14E');
       px(ctx, sc.x + 34, sc.y + 6, 8, 1, '#6A6F86'); px(ctx, sc.x + 42, sc.y + 4, 9, 5, '#E0709B');
@@ -2686,11 +2710,11 @@
     const c = B.canvas.getContext('2d');
     c.clearRect(0, 0, b.w, b.h);
     const n = B.n || 0;
-    drawPixelText(c, 'AGENTS', 2, 1, '#F2C14E', 1);
-    drawPixelText(c, String(n), 2 + measurePixelText('AGENTS') + 4, 1, '#ECE8F4', 1);
+    drawPixelText(c, 'PIX', 2, 1, '#F2C14E', 1);
+    drawPixelText(c, String(n), 2 + measurePixelText('PIX') + 4, 1, '#ECE8F4', 1);
     px(c, 1, 7, b.w - 2, 1, '#1E2A40');
     if (n === 0) {
-      const msg = 'AUCUN AGENT';
+      const msg = 'AUCUN PIX';
       drawPixelText(c, msg, Math.round((b.w - measurePixelText(msg)) / 2), 12, '#4A5578', 1);
     } else {
       const colW = Math.floor((b.w - 2) / 3);
