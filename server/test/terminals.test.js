@@ -112,6 +112,7 @@ test('integrated terminal: REST, WebSocket, shim and session linking', { skip },
   setEnv({ HQ_FAKE_CLAUDE: '1', FAKE_CLAUDE_PROJECTS: projects, FAKE_CLAUDE_CTL: ctl, FAKE_CLAUDE_LOG: logFile, FAKE_CLAUDE_EXIT: '0' });
 
   const app = await startServer({
+    license: { bypass: true },
     port: 0,
     observe: false,
     publicDir: makePublicDir(),

@@ -10,6 +10,7 @@ const fakeClaude = { command: process.execPath, prefixArgs: [FAKE_CLAUDE], path:
 
 test('HTTP guards, static files and REST routes', async (t) => {
   const app = await startServer({
+    license: { bypass: true },
     port: 0,
     observe: false,
     publicDir: makePublicDir(),
@@ -199,9 +200,9 @@ test('CLI argument parsing', () => {
 });
 
 test('busy port: the next free port is used', async (t) => {
-  const first = await startServer({ port: 0, observe: false, publicDir: makePublicDir(), claude: fakeClaude, skipVersion: true });
+  const first = await startServer({ license: { bypass: true }, port: 0, observe: false, publicDir: makePublicDir(), claude: fakeClaude, skipVersion: true });
   t.after(() => first.close());
-  const second = await startServer({ port: first.port, observe: false, publicDir: makePublicDir(), claude: fakeClaude, skipVersion: true });
+  const second = await startServer({ license: { bypass: true }, port: first.port, observe: false, publicDir: makePublicDir(), claude: fakeClaude, skipVersion: true });
   t.after(() => second.close());
   assert.notEqual(second.port, first.port);
   assert.ok(second.port > first.port && second.port <= first.port + 10);

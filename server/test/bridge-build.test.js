@@ -19,6 +19,10 @@ test('bridge: compiled when missing, recompiled when older than its source, old 
   const src = path.join(dir, 'hq-pty.cs');
   const exe = path.join(dir, 'hq-pty.exe');
   fs.copyFileSync(BRIDGE_SOURCE, src);
+  // copyFileSync keeps the original modification time on Windows: pin it to "now" so the
+  // "exe older than its source" checks below do not depend on when hq-pty.cs was last edited.
+  const now = new Date();
+  fs.utimesSync(src, now, now);
   const make = () => new TerminalManager({ manager: new AgentManager({ claude: null }), bridgePath: exe, bridgeSource: src });
 
   const first = make();
@@ -50,6 +54,7 @@ test('bridge: compiled when missing, recompiled when older than its source, old 
 
 test('terminal unavailable: config says why, routes answer 501', async (t) => {
   const app = await startServer({
+    license: { bypass: true },
     port: 0,
     observe: false,
     publicDir: makePublicDir(),
