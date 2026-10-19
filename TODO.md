@@ -8,8 +8,7 @@ Liste notée le 19 octobre 2026. Ordre de la liste = ordre donné, pas une prior
 - [x] **Renommer le dossier `claude-hq` en `pixelqg-app`.** Fait le 19 octobre.
 
 ## Vidéo
-- [ ] **Voix off sur le texte du début de la vidéo.**
-  Note : la vidéo se refait à partir de `pixelqg-site/video-src` (rendu image par image + ffmpeg). Il faudra choisir une voix : la tienne, ou une voix de synthèse.
+- [x] ~~**Voix off sur la vidéo.**~~ Abandonné le 19 octobre : tu préfères la vidéo sans voix, avec la musique seule.
 - [ ] **Refaire la vidéo avec toutes les nouveautés** une fois le reste fait (dernière étape).
 
 ## Appli
@@ -41,4 +40,5 @@ Liste notée le 19 octobre 2026. Ordre de la liste = ordre donné, pas une prior
 
 ## Déjà en place (pour mémoire)
 - Appli : bureau en pixel art (10 pièces, jour/nuit, niveaux, succès), lancement d'agents, terminal intégré qui relie les sessions `claude`, bibliothèque de dépôts GitHub de skills, `PixelQG.exe` sur le bureau.
-- Site de vente PixelQG : `pixelqg-site/index.html` + vidéo de démo. À faire avant de vendre : lien de paiement dans `config.js`, mentions légales et CGV, hébergement, zip de l'appli pour les acheteurs.
+- Site de vente PixelQG en ligne sur https://pixelqg-site.pages.dev/ (Cloudflare Pages, gratuit), avec vidéo de démo navigable. À faire avant de vendre : lien de paiement Stripe dans `config.js`, mentions légales et CGV, zip de l'appli pour les acheteurs.
+- Code sur GitHub en privé : `hugobertagna/pixelqg-app` et `hugobertagna/pixelqg-site`. Serveurs MCP Supabase et Cloudflare branchés.
